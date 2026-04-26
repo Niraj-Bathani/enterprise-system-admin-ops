@@ -1,31 +1,111 @@
 # SSH Key Administration For Linux
 
+## Overview
+
+This guide demonstrates how to configure SSH key-based authentication from a Windows system to an Ubuntu server. It improves security by eliminating password-based logins and enables efficient remote administration.
+
+---
+
+## What This Demonstrates
+
+- Secure remote access using SSH keys  
+- Cross-platform administration (Windows → Linux)  
+- Authentication hardening practices  
+- Troubleshooting SSH connectivity  
+
+---
+
 ## Objective
 
-Create and use SSH keys from Windows to administer Ubuntu Server 22.04 securely. SSH keys reduce password exposure and support repeatable administration from Windows Terminal or PowerShell.
+Generate SSH keys on Windows and use them to securely connect to an Ubuntu server without using passwords.
 
-## Generate Key On Windows
+---
 
-On `CLIENT01`, open PowerShell and run `ssh-keygen -t ed25519 -C "jsmith-lab-admin"`. Accept the default path or use a lab-specific file such as `$env:USERPROFILE\.ssh\lab_ed25519`. Use a passphrase for realistic practice. Confirm the public key exists with `Get-Content $env:USERPROFILE\.ssh\lab_ed25519.pub`.
+## Lab Environment
 
-## Install Public Key On Ubuntu
+- Windows Client: CLIENT01 (192.168.100.20)  
+- Ubuntu Server: UBUNTU01 (192.168.100.30)  
 
-On Ubuntu, create the `.ssh` directory with `mkdir -p ~/.ssh && chmod 700 ~/.ssh`. Append the public key to `~/.ssh/authorized_keys` and run `chmod 600 ~/.ssh/authorized_keys`. From Windows, connect with `ssh -i $env:USERPROFILE\.ssh\lab_ed25519 username@192.168.100.30`.
+---
 
-## Hardening Notes
+## Generate SSH Key (Windows)
 
-After key authentication is confirmed, production systems often disable password authentication in `/etc/ssh/sshd_config` with `PasswordAuthentication no`, then restart `sshd`. In the lab, keep console access available before changing this setting. Always test a second session before closing the first administrative connection.
+Open PowerShell:
 
-## Troubleshooting
+```powershell
+ssh-keygen -t ed25519 -C "jsmith-lab-admin"
 
-Use `ssh -vvv` for verbose client diagnostics. On Ubuntu, check `sudo journalctl -u ssh --since "30 minutes ago"`. Permission errors usually come from loose permissions on the home directory, `.ssh`, or `authorized_keys`. Capture `![SSH key login](./screenshots/ssh-key-login.png)` after lab execution.
+Optional custom path:
 
-## Operational Quality Notes
+ssh-keygen -t ed25519 -f $env:USERPROFILE\.ssh\lab_ed25519
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+Verify key:
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `ssh-key-administration-for-linux-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+Get-Content $env:USERPROFILE\.ssh\lab_ed25519.pub
+Install Public Key (Ubuntu)
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Add public key:
 
-After completing the procedure, compare the outcome with [samba-file-share.md](samba-file-share.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+nano ~/.ssh/authorized_keys
+
+Set permissions:
+
+chmod 600 ~/.ssh/authorized_keys
+Connect Using SSH Key
+ssh -i $env:USERPROFILE\.ssh\lab_ed25519 username@192.168.100.30
+Expected Outcome
+SSH login works without password
+Server accepts key authentication
+Connection is secure and repeatable
+Validation Checklist
+ SSH connection succeeds without password
+ .ssh directory permissions are correct
+ authorized_keys contains the public key
+ No authentication errors occur
+
+📸 Screenshot:
+
+![SSH key login](./screenshots/ssh-key-login.png)
+Hardening
+
+After confirming key-based login:
+
+Edit SSH config:
+
+sudo nano /etc/ssh/sshd_config
+
+Set:
+
+PasswordAuthentication no
+
+Restart SSH:
+
+sudo systemctl restart ssh
+
+Always test a second session before closing the first.
+
+Troubleshooting
+
+Client-side:
+
+ssh -vvv username@192.168.100.30
+
+Server-side:
+
+sudo journalctl -u ssh --since "30 minutes ago"
+
+Common issues:
+
+Incorrect permissions on .ssh or authorized_keys
+Wrong key file used
+SSH service not running
+Production Considerations
+Disable password authentication
+Use strong key types (ed25519 or rsa 4096)
+Restrict SSH access via firewall
+Monitor authentication logs
+Summary
+
+This guide demonstrates secure SSH key-based access from Windows to Linux. It reflects real-world administrative practices focused on security, efficiency, and reliability.

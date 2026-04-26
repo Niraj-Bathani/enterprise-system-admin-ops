@@ -1,39 +1,123 @@
 <#
 .SYNOPSIS
-Reports Active Directory computer objects inactive for a threshold.
+Reports stale Active Directory computer objects.
 
 .DESCRIPTION
-Finds computers with LastLogonDate older than the threshold and exports them for cleanup review.
+Identifies inactive and unused computer accounts, classifies them, and generates a structured report for cleanup review.
 
 .PARAMETER DaysInactive
-Inactive threshold.
+Inactive threshold in days.
+
 .PARAMETER SearchBase
-Computer OU or domain DN.
+OU or domain DN.
+
 .PARAMETER ReportPath
-CSV path.
+CSV output path.
+
 .PARAMETER LogPath
-Log path.
+Log file path.
 
 .EXAMPLE
-./stale-computers-report.ps1 -DaysInactive 60 -SearchBase 'DC=lab,DC=local'
+.\stale-computers-report.ps1 -DaysInactive 60 -SearchBase 'DC=lab,DC=local'
 #>
-[CmdletBinding(SupportsShouldProcess=$true)]
 
+[CmdletBinding(SupportsShouldProcess=$true)]
 param(
-    [Parameter()][ValidateRange(30,3650)][int]$DaysInactive=90,
-    [Parameter(Mandatory)][ValidatePattern('^(OU|DC)=')][string]$SearchBase,
-    [Parameter()][ValidateNotNullOrEmpty()][string]$ReportPath='C:\Logs\StaleComputersReport.csv',
-    [Parameter()][ValidateNotNullOrEmpty()][string]$LogPath='C:\Logs\StaleComputersReport.log'
+    [ValidateRange(30,3650)]
+    [int]$DaysInactive=90,
+
+    [Parameter(Mandatory)]
+    [string]$SearchBase,
+
+    [string]$ReportPath='C:\Logs\StaleComputersReport.csv',
+
+    [string]$LogPath='C:\Logs\StaleComputersReport.log'
 )
-function Write-Log { param([string]$Message,[ValidateSet('INFO','WARN','ERROR')]$Level='INFO'); $d=Split-Path $LogPath -Parent; if(-not(Test-Path $d)){New-Item $d -ItemType Directory -Force|Out-Null}; Add-Content $LogPath "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [$Level] $Message" }
-try{
+
+function Write-Log {
+    param(
+        [string]$Message,
+        [ValidateSet('INFO','WARN','ERROR')]
+        [string]$Level='INFO'
+    )
+    $dir = Split-Path $LogPath -Parent
+    if (-not (Test-Path $dir)) {
+        New-Item $dir -ItemType Directory -Force | Out-Null
+    }
+    Add-Content $LogPath "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [$Level] $Message"
+}
+
+try {
     Import-Module ActiveDirectory -ErrorAction Stop
-    $cutoff=(Get-Date).AddDays(-$DaysInactive)
-    $rows=Get-ADComputer -SearchBase $SearchBase -Filter * -Properties LastLogonDate,OperatingSystem -ErrorAction Stop |
-        Where-Object { $null -eq $_.LastLogonDate -or $_.LastLogonDate -lt $cutoff } |
-        Select-Object Name,DNSHostName,OperatingSystem,LastLogonDate,Enabled
-    $dir=Split-Path $ReportPath -Parent; if(-not(Test-Path $dir)){New-Item $dir -ItemType Directory -Force|Out-Null}
-    $rows | Export-Csv -NoTypeInformation -Path $ReportPath
-    Write-Log "Wrote $($rows.Count) stale computers to '$ReportPath'."
-    $rows
-} catch { Write-Log "Stale computer report failed: $($_.Exception.Message)" 'ERROR'; throw }
+
+    # Domain check
+    if (-not (Get-ADDomain -ErrorAction SilentlyContinue)) {
+        throw "Unable to connect to Active Directory"
+    }
+
+    $cutoff = (Get-Date).AddDays(-$DaysInactive)
+
+    $computers = Get-ADComputer -SearchBase $SearchBase `
+        -Filter * `
+        -Properties LastLogonDate,OperatingSystem,Enabled
+
+    $results = @()
+    $inactive = 0
+    $never = 0
+    $disabled = 0
+
+    foreach ($c in $computers) {
+
+        if (-not $c.Enabled) {
+            $status = "Disabled"
+            $disabled++
+        }
+        elseif ($null -eq $c.LastLogonDate) {
+            $status = "NeverLoggedIn"
+            $never++
+        }
+        elseif ($c.LastLogonDate -lt $cutoff) {
+            $status = "Inactive"
+            $inactive++
+        }
+        else {
+            continue
+        }
+
+        $results += [pscustomobject]@{
+            Name            = $c.Name
+            DNSHostName     = $c.DNSHostName
+            OperatingSystem = $c.OperatingSystem
+            LastLogonDate   = $c.LastLogonDate
+            Enabled         = $c.Enabled
+            Status          = $status
+        }
+    }
+
+    # Ensure directory exists
+    $dir = Split-Path $ReportPath -Parent
+    if (-not (Test-Path $dir)) {
+        New-Item $dir -ItemType Directory -Force | Out-Null
+    }
+
+    # Sort: most critical first
+    $results |
+        Sort-Object Status, LastLogonDate |
+        Export-Csv -NoTypeInformation -Path $ReportPath
+
+    Write-Log "Stale computer report created: $ReportPath"
+
+    # Summary output
+    [pscustomobject]@{
+        TotalReviewed = $computers.Count
+        Inactive      = $inactive
+        NeverLoggedIn = $never
+        Disabled      = $disabled
+        Report        = $ReportPath
+        Timestamp     = Get-Date
+    }
+
+} catch {
+    Write-Log "Stale computer report failed: $($_.Exception.Message)" "ERROR"
+    throw
+}

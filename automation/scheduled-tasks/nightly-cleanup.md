@@ -1,31 +1,109 @@
 # Nightly Cleanup Scheduled Task
 
+## Overview
+
+This task automates the cleanup of temporary files and archived logs in the lab environment. It demonstrates how administrators design, schedule, validate, and document recurring maintenance tasks.
+
+---
+
+## What This Demonstrates
+
+- Scheduled task creation and automation  
+- Safe file cleanup practices using retention policies  
+- Logging and validation of automated processes  
+- Operational thinking for recurring maintenance tasks  
+
+---
+
 ## Objective
 
-Create a scheduled task that runs a safe nightly cleanup script for temporary files and old logs in the lab. The task demonstrates how administrators document triggers, actions, run accounts, logging, and validation.
+Create a scheduled task that runs a controlled cleanup script nightly to remove old log and temporary files without affecting system stability.
+
+---
 
 ## Design
 
-In the lab, the task can run as an authorized administrator. In production, use a managed service account or dedicated task account with only the permissions required. The cleanup should target known paths such as `C:\Logs\Archive` or application temp folders, not broad system locations. Deleting files older than a threshold is safer than deleting everything in a folder.
+In the lab, the task can run as an administrator account.  
+In production, use a dedicated service account or managed service account with minimal required permissions.
 
-## Example Command
+The cleanup must:
 
-Create the action with `New-ScheduledTaskAction -Execute 'PowerShell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File C:\Scripts\NightlyCleanup.ps1'`. Create the trigger with `New-ScheduledTaskTrigger -Daily -At 2:00am`. Register with `Register-ScheduledTask -TaskName 'LAB Nightly Cleanup' -Action $action -Trigger $trigger -Description 'Removes old lab logs after retention period'`.
+- Target specific directories (e.g., `C:\Logs\Archive`)  
+- Use file age thresholds (not blanket deletion)  
+- Log all actions  
 
-## Validation
+---
 
-Run the task manually from Task Scheduler, then check Last Run Result. A result of `0x0` means the process exited successfully, but still review the script log. Check that only expected files were removed and that the log includes timestamped actions. Capture `![Nightly cleanup task](./screenshots/nightly-cleanup-task.png)` after lab execution.
+## Cleanup Script Example
 
-## Troubleshooting
+```powershell
+# NightlyCleanup.ps1
 
-If the task does not run, confirm the account password, run whether user is logged on setting, execution policy, path spelling, and permissions to the script and target folders. If it runs but deletes nothing, check the file age filter and whether the script is running in the expected working directory.
+$path = "C:\Logs\Archive"
+$days = 30
 
-## Operational Quality Notes
+Get-ChildItem -Path $path -File |
+Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-$days) } |
+ForEach-Object {
+    Remove-Item $_.FullName -Force
+    Write-Output "Deleted: $($_.FullName)"
+}
+Scheduled Task Configuration
+$action = New-ScheduledTaskAction `
+    -Execute 'PowerShell.exe' `
+    -Argument '-NoProfile -ExecutionPolicy Bypass -File C:\Scripts\NightlyCleanup.ps1'
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+$trigger = New-ScheduledTaskTrigger -Daily -At 2:00am
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `nightly-cleanup-scheduled-task-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+Register-ScheduledTask `
+    -TaskName 'LAB Nightly Cleanup' `
+    -Action $action `
+    -Trigger $trigger `
+    -Description 'Removes old lab logs after retention period'
+Validation
+Run the task manually from Task Scheduler
+Check Last Run Result = 0x0
+Review script output/logs
+Confirm only expected files were deleted
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+📸 Screenshot:
 
-After completing the procedure, compare the outcome with [weekly-report.md](weekly-report.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+![Nightly cleanup task](./screenshots/nightly-cleanup-task.png)
+Expected Outcome
+Old files are deleted based on retention policy
+No critical system files are affected
+Script logs show actions performed
+Task completes successfully (0x0)
+Troubleshooting
+
+If the task does not run:
+
+Verify account credentials
+Check “Run whether user is logged on or not”
+Confirm script path and execution policy
+Check permissions on script and target folders
+
+If the task runs but no files are deleted:
+
+Verify file age filter
+Confirm correct directory path
+Check script execution context
+Operational Notes
+
+This procedure is tested in a lab environment (lab.local, 192.168.100.0/24).
+
+In production:
+
+Use change management
+Define maintenance window
+Assign ownership and validation responsibility
+Ensure rollback plan exists
+
+Always capture:
+
+initial state
+configuration changes
+validation results
+Summary
+
+This task demonstrates how to safely automate recurring maintenance using scheduled tasks. It emphasizes controlled execution, logging, validation, and operational discipline required in real-world system administration.

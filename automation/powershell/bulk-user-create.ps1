@@ -3,81 +3,138 @@
 Creates Active Directory users from a CSV file.
 
 .DESCRIPTION
-Reads a CSV containing FirstName, LastName, Department, and Password columns, creates users in department OUs under the supplied base OU, and logs every action. The script assumes it is run by an authorized domain administrator and never stores credentials.
+Reads a CSV containing FirstName, LastName, Department, and Password columns. Creates users in department OUs under the supplied base OU, ensures unique usernames, logs all actions, and produces a summary report.
 
 .PARAMETER CsvPath
-Path to a CSV with headers FirstName, LastName, Department, Password.
+Path to CSV file.
+
 .PARAMETER DomainName
-DNS domain name such as lab.local.
+DNS domain name (e.g., lab.local).
+
 .PARAMETER UserBaseOu
-Base OU that contains department OUs, such as OU=Users,DC=lab,DC=local.
+Base OU (e.g., OU=Users,DC=lab,DC=local).
+
 .PARAMETER LogPath
-Log file path. Defaults to C:\Logs\BulkUserCreate.log.
+Log file path.
 
 .EXAMPLE
 ./bulk-user-create.ps1 -CsvPath .\new-users.csv -DomainName lab.local -UserBaseOu 'OU=Users,DC=lab,DC=local'
 #>
-[CmdletBinding(SupportsShouldProcess=$true)]
 
+[CmdletBinding(SupportsShouldProcess=$true)]
 param(
     [Parameter(Mandatory)]
     [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$CsvPath,
 
     [Parameter(Mandatory)]
-    [ValidatePattern('^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')]
     [string]$DomainName,
 
     [Parameter(Mandatory)]
-    [ValidatePattern('^OU=.*DC=.*')]
     [string]$UserBaseOu,
 
     [Parameter()]
-    [ValidateNotNullOrEmpty()]
     [string]$LogPath = 'C:\Logs\BulkUserCreate.log'
 )
 
 function Write-Log {
     param([string]$Message, [ValidateSet('INFO','WARN','ERROR')] [string]$Level = 'INFO')
-    $dir = Split-Path -Path $LogPath -Parent
-    if (-not (Test-Path $dir)) { New-Item -Path $dir -ItemType Directory -Force | Out-Null }
-    Add-Content -Path $LogPath -Value "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [$Level] $Message"
+    $dir = Split-Path $LogPath -Parent
+    if (-not (Test-Path $dir)) { New-Item $dir -ItemType Directory -Force | Out-Null }
+    Add-Content $LogPath "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [$Level] $Message"
+}
+
+function Get-UniqueSamAccountName {
+    param($baseSam)
+    $sam = $baseSam
+    $i = 1
+    while (Get-ADUser -Filter "SamAccountName -eq '$sam'" -ErrorAction SilentlyContinue) {
+        $sam = "$baseSam$i"
+        $i++
+    }
+    return $sam
 }
 
 try {
     Import-Module ActiveDirectory -ErrorAction Stop
-    $required = 'FirstName','LastName','Department','Password'
-    $users = Import-Csv -Path $CsvPath -ErrorAction Stop
-    if (-not $users) { throw "CSV file '$CsvPath' contains no rows." }
-    foreach ($column in $required) {
-        if ($users[0].PSObject.Properties.Name -notcontains $column) { throw "CSV is missing required column '$column'." }
+
+    # Domain check
+    if (-not (Get-ADDomain -ErrorAction SilentlyContinue)) {
+        throw "Unable to connect to Active Directory domain."
     }
+
+    $required = 'FirstName','LastName','Department','Password'
+    $users = Import-Csv -Path $CsvPath
+
+    if (-not $users) { throw "CSV is empty." }
+
+    foreach ($col in $required) {
+        if ($users[0].PSObject.Properties.Name -notcontains $col) {
+            throw "Missing column: $col"
+        }
+    }
+
+    $created = 0
+    $failed = 0
+
+    # Cache OUs
+    $ouCache = @{}
+
     foreach ($row in $users) {
         try {
             $first = $row.FirstName.Trim()
             $last = $row.LastName.Trim()
             $dept = $row.Department.Trim()
-            if ([string]::IsNullOrWhiteSpace($first) -or [string]::IsNullOrWhiteSpace($last) -or [string]::IsNullOrWhiteSpace($dept)) {
-                throw "FirstName, LastName, and Department must be populated."
+
+            if ([string]::IsNullOrWhiteSpace($first) -or [string]::IsNullOrWhiteSpace($last)) {
+                throw "Invalid name data"
             }
-            $sam = ("{0}{1}" -f $first.Substring(0,1), $last).ToLower()
+
+            $baseSam = ("{0}{1}" -f $first.Substring(0,1), $last).ToLower()
+            $sam = Get-UniqueSamAccountName -baseSam $baseSam
             $upn = "$sam@$DomainName"
+
             $targetOu = "OU=$dept,$UserBaseOu"
-            $existing = Get-ADUser -Filter "SamAccountName -eq '$sam'" -ErrorAction Stop
-            if ($existing) { throw "User '$sam' already exists." }
-            Get-ADOrganizationalUnit -Identity $targetOu -ErrorAction Stop | Out-Null
-            $securePassword = ConvertTo-SecureString $row.Password -AsPlainText -Force
-            if ($PSCmdlet.ShouldProcess($sam, "Create AD user in $targetOu")) {
-                New-ADUser -Name "$first $last" -GivenName $first -Surname $last -SamAccountName $sam -UserPrincipalName $upn -Department $dept -Path $targetOu -AccountPassword $securePassword -Enabled $true -ChangePasswordAtLogon $true -ErrorAction Stop
-                Write-Log "Created user '$sam' in '$targetOu'."
+
+            if (-not $ouCache.ContainsKey($targetOu)) {
+                Get-ADOrganizationalUnit -Identity $targetOu -ErrorAction Stop | Out-Null
+                $ouCache[$targetOu] = $true
             }
-        }
-        catch {
-            Write-Log "Failed to process '$($row.FirstName) $($row.LastName)': $($_.Exception.Message)" 'ERROR'
+
+            $securePassword = ConvertTo-SecureString $row.Password -AsPlainText -Force
+
+            if ($PSCmdlet.ShouldProcess($sam, "Create AD user")) {
+                New-ADUser `
+                    -Name "$first $last" `
+                    -GivenName $first `
+                    -Surname $last `
+                    -SamAccountName $sam `
+                    -UserPrincipalName $upn `
+                    -Department $dept `
+                    -Path $targetOu `
+                    -AccountPassword $securePassword `
+                    -Enabled $true `
+                    -ChangePasswordAtLogon $true
+
+                Write-Log "Created user '$sam'"
+                $created++
+            }
+
+        } catch {
+            Write-Log "Failed: $($row.FirstName) $($row.LastName) - $($_.Exception.Message)" "ERROR"
+            $failed++
         }
     }
-}
-catch {
-    Write-Log "Script failed: $($_.Exception.Message)" 'ERROR'
+
+    Write-Log "Completed. Created: $created, Failed: $failed"
+
+    [pscustomobject]@{
+        Created = $created
+        Failed  = $failed
+        Total   = $users.Count
+    }
+
+} catch {
+    Write-Log "Script failed: $($_.Exception.Message)" "ERROR"
     throw
 }

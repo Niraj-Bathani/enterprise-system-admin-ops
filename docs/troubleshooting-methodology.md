@@ -1,31 +1,122 @@
 # Troubleshooting Methodology
 
-## Start With Scope
+## Overview
 
-Ask who is affected, what changed, when it started, and whether the issue follows the user, computer, location, or application. Scope prevents overreaction. One user with a locked account requires a different response than every user failing to authenticate.
+This section outlines a structured approach to diagnosing and resolving system administration issues. It focuses on consistency, evidence-based analysis, and minimizing risk during troubleshooting.
 
-## Preserve Evidence
+---
 
-Record exact error text, screenshots after lab execution, event IDs, commands, and timestamps. Start a PowerShell transcript for command-heavy work. Evidence supports handoff, root cause analysis, and training.
+## What This Demonstrates
 
-## Work The Stack
+- Structured problem-solving approach  
+- Root cause analysis  
+- Operational discipline  
+- Real-world troubleshooting methodology  
 
-For Windows domain issues, check client network configuration, DNS, time sync, domain controller discovery, secure channel, account state, group membership, policy, and service logs. For file access, check path, authentication, share permission, NTFS permission, group token, and inheritance. For DNS/DHCP, check client configuration before changing server settings.
+---
 
-## Change One Thing
+## Core Principles
 
-Make one change at a time and retest. Multiple simultaneous changes can restore service but hide the actual fix, which weakens prevention. If an emergency requires several changes, document them separately and follow up with root cause analysis.
+### 1. Start With Scope
 
-## Close With Validation
+Identify:
 
-The final test should match the original failure. If the user could not map a drive, test mapping the drive. If DNS failed, test the exact name from the exact client resolver. Close the ticket only when the business function works again.
+- Who is affected  
+- What changed  
+- When it started  
+- Whether it follows user, device, or location  
 
-## Operational Quality Notes
+Understanding scope prevents unnecessary changes and helps prioritize response.
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+---
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `troubleshooting-methodology-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+### 2. Preserve Evidence
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Always capture:
 
-After completing the procedure, compare the outcome with [common-errors.md](common-errors.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+- Exact error messages  
+- Event IDs  
+- Commands used  
+- Timestamps  
+
+Use PowerShell transcripts when applicable.
+
+This supports:
+- Handover  
+- Root cause analysis  
+- Documentation  
+
+---
+
+### 3. Work the Stack
+
+Follow a structured order:
+
+**For domain issues:**
+- Network configuration  
+- DNS resolution  
+- Time synchronization  
+- Domain controller connectivity  
+- Account status  
+- Group membership  
+- Group Policy  
+- Service logs  
+
+**For file access issues:**
+- Path validity  
+- Authentication  
+- Share permissions  
+- NTFS permissions  
+- Group membership  
+- Inheritance  
+
+**For DNS/DHCP:**
+- Verify client configuration first  
+
+---
+
+### 4. Change One Thing at a Time
+
+- Make a single change  
+- Test immediately  
+- Document results  
+
+Avoid multiple simultaneous changes unless in emergency scenarios.
+
+---
+
+### 5. Validate the Fix
+
+Validation must match the original issue:
+
+- If drive mapping failed → test drive mapping  
+- If DNS failed → test name resolution  
+- If login failed → test login  
+
+Only close the issue when the user-facing problem is resolved.
+
+---
+
+## Practical Workflow
+
+1. Define the problem scope  
+2. Collect evidence  
+3. Follow structured checks  
+4. Apply minimal change  
+5. Validate outcome  
+6. Document resolution  
+
+---
+
+## Key Takeaways
+
+- Troubleshooting is a process, not guesswork  
+- Evidence is critical for accuracy and handoff  
+- Small, controlled changes reduce risk  
+- Validation must reflect real user impact  
+
+---
+
+## Summary
+
+This methodology reflects real-world system administration practices. It ensures consistent, reliable troubleshooting while minimizing risk and maintaining service stability.

@@ -1,33 +1,196 @@
 # Windows Sysadmin Interview Questions
 
-## Questions And Answers
+## Overview
 
-1. **Explain FSMO roles and why they matter.** FSMO roles are specialized Active Directory roles that prevent conflicting changes for certain operations. Schema Master and Domain Naming Master are forest-wide, while RID Master, PDC Emulator, and Infrastructure Master are domain-wide. The PDC Emulator is especially visible because it handles time priority, password changes, and lockout behavior.
+This section contains commonly asked Windows system administration interview questions with practical, experience-based answers. The focus is on real-world understanding rather than theoretical definitions.
 
-2. **How do you force a GPO update on all domain computers?** Locally, run `gpupdate /force`. Remotely, use Group Policy Management Console to run Group Policy Update against an OU, or use PowerShell remoting with care. I verify with `gpresult /r` or an HTML report because triggering refresh does not prove the intended policy applied.
+---
 
-3. **Write a PowerShell script to find users who have not logged in for 90 days.** Use `Get-ADUser -Filter * -Properties LastLogonDate`, compare `LastLogonDate` to `(Get-Date).AddDays(-90)`, and export results to CSV. In production I exclude service accounts and privileged accounts from automatic disablement until owners approve.
+## Questions and Answers
 
-4. **What is the difference between a security group and a distribution group?** A security group can be used in ACLs to grant access to resources and can also be mail-enabled. A distribution group is intended for email distribution and cannot grant file or application permissions.
+---
 
-5. **How do you recover a deleted AD object?** If the AD Recycle Bin is enabled, use Active Directory Administrative Center or `Restore-ADObject`. Without it, recovery may require authoritative restore from backup. I first confirm the object, deletion time, and dependencies such as group membership.
+### 1. Explain FSMO roles and why they matter
 
-6. **How do NTFS and share permissions combine?** The most restrictive effective permission wins when accessing over the network. I usually set share permissions broadly and enforce detailed access with NTFS groups.
+**Answer:**
 
-7. **What causes account lockouts?** Common causes include old saved credentials, mapped drives, mobile email clients, scheduled tasks, services, and repeated user mistakes. Event `4740` on the domain controller helps identify the source workstation.
+FSMO (Flexible Single Master Operations) roles are specialized Active Directory roles that prevent conflicts for certain operations.
 
-8. **How do you troubleshoot DNS in an AD domain?** I check client DNS server, resolve the domain and SRV records, test port 53, inspect zone records, and confirm AD replication. Many domain issues are really DNS misconfiguration.
+- **Forest-wide:** Schema Master, Domain Naming Master  
+- **Domain-wide:** RID Master, PDC Emulator, Infrastructure Master  
 
-9. **What is SYSVOL used for?** SYSVOL stores domain public files including Group Policy templates and scripts replicated to domain controllers. If SYSVOL or NETLOGON shares are missing, policy and logon script processing can fail.
+The **PDC Emulator** is critical because it handles:
 
-10. **How do you safely patch domain controllers?** Patch one at a time where multiple DCs exist, verify replication and health before and after, and ensure backups are current. In a single-DC lab, I snapshot or back up first and schedule downtime.
+- Password changes  
+- Account lockouts  
+- Time synchronization  
 
-11. **What is Kerberos token bloat?** Token bloat happens when a user belongs to too many groups, increasing the Kerberos token size and potentially causing authentication failures. It is mitigated by group cleanup and better role design.
+**Why it matters:**  
+If FSMO roles fail, key AD functions break.
 
-12. **How do you map a drive with GPO?** Use User Configuration, Preferences, Windows Settings, Drive Maps. Link the GPO to the user OU and validate with `gpresult` and `net use`.
+---
 
-13. **How do you identify stale computers?** Query `Get-ADComputer` with `LastLogonDate`, compare against a threshold, and validate with endpoint inventory before disabling. Some systems may be offline for legitimate reasons.
+### 2. How do you force a GPO update on all domain computers?
 
-14. **What is the difference between a lab and production change?** A lab change proves the technical steps. A production change adds approval, communication, rollback, monitoring, and business validation.
+**Answer:**
 
-15. **How do you respond to a P1 outage?** Establish impact, start an incident bridge, assign roles, preserve evidence, restore service using the safest known path, and communicate regularly. Root cause analysis follows after service is restored.
+- Local:  
+  ```cmd
+  gpupdate /force
+Remote:
+Group Policy Management Console (GPMC)
+PowerShell remoting
+
+Validation:
+
+gpresult /r
+gpresult /h report.html
+3. Find users inactive for 90 days (PowerShell)
+
+Answer:
+
+Get-ADUser -Filter * -Properties LastLogonDate |
+Where-Object { $_.LastLogonDate -lt (Get-Date).AddDays(-90) }
+
+Note:
+In production, exclude service and privileged accounts.
+
+4. Security group vs distribution group
+
+Answer:
+
+Security group: Used for permissions + can be mail-enabled
+Distribution group: Email only, cannot assign permissions
+5. How do you recover a deleted AD object?
+
+Answer:
+
+With Recycle Bin:
+
+Restore-ADObject
+Without it:
+Authoritative restore from backup
+
+Important: Validate dependencies (groups, permissions)
+
+6. NTFS vs Share permissions
+
+Answer:
+
+Effective permission = most restrictive combination
+
+Best practice:
+
+Share = broad
+NTFS = detailed control
+7. What causes account lockouts?
+
+Answer:
+
+Cached credentials
+Mapped drives
+Services / scheduled tasks
+Mobile devices
+
+Check:
+
+Event ID: 4740 (Domain Controller)
+8. How do you troubleshoot DNS in AD?
+
+Answer:
+
+Verify client DNS settings
+
+Test resolution:
+
+Resolve-DnsName domain.local
+Check port 53
+Verify zone records
+Confirm replication
+9. What is SYSVOL?
+
+Answer:
+
+SYSVOL stores:
+
+Group Policy templates
+Logon scripts
+
+It is replicated across domain controllers.
+
+If broken:
+
+GPOs may not apply
+Logon scripts fail
+10. How do you safely patch domain controllers?
+
+Answer:
+
+Patch one DC at a time
+Verify replication before/after
+Ensure backups exist
+
+Lab:
+
+Use snapshot
+
+Production:
+
+Use change window
+11. What is Kerberos token bloat?
+
+Answer:
+
+Occurs when a user belongs to too many groups, increasing token size and causing authentication failures.
+
+Fix:
+
+Reduce group memberships
+Improve role design
+12. How do you map a drive with GPO?
+
+Answer:
+
+User Configuration → Preferences → Drive Maps
+Link GPO to user OU
+
+Validate:
+
+gpresult /r
+net use
+13. How do you identify stale computers?
+
+Answer:
+
+Get-ADComputer -Filter * -Properties LastLogonDate
+
+Compare with threshold.
+
+Important:
+Always verify with inventory before disabling.
+
+14. Lab vs production change
+
+Answer:
+
+Lab: Test technical steps
+Production:
+Approval
+Communication
+Rollback plan
+Monitoring
+15. How do you handle a P1 outage?
+
+Answer:
+
+Assess impact
+Start incident bridge
+Assign roles
+Restore service quickly
+Communicate updates
+
+Root cause analysis happens after recovery
+
+Summary
+
+These questions reflect real-world system administration scenarios. The answers emphasize practical experience, validation, and operational thinking rather than memorization.

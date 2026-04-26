@@ -1,31 +1,127 @@
 # Common Errors
 
-## The Referenced Account Is Locked Out
+## Overview
 
-This usually means repeated bad passwords triggered lockout policy. Check ADUC or `Search-ADAccount -LockedOut`, then review event `4740` on the domain controller for the source. Fix by unlocking the account and clearing saved credentials on the source device.
+This section provides quick troubleshooting references for common system administration issues. It focuses on identifying root causes and applying structured diagnostics rather than guessing fixes.
 
-## The Network Path Was Not Found
+---
 
-This may be DNS, SMB, firewall, or server state. Test `Resolve-DnsName FS01`, `Test-NetConnection FS01 -Port 445`, and `Get-SmbShare` on the file server. Do not change permissions until the path is reachable.
+## What This Demonstrates
 
-## Access Is Denied
+- Practical troubleshooting skills  
+- Root cause analysis  
+- Use of diagnostic tools and commands  
+- Structured problem-solving approach  
 
-Access denied means authentication succeeded but authorization failed, or the token lacks required membership. Check `whoami /groups`, `Get-SmbShareAccess`, NTFS ACLs with `icacls`, and Effective Access. Have the user sign out and back in after group changes.
+---
 
-## Group Policy Did Not Apply
+## Troubleshooting Approach
 
-Run `gpupdate /force`, `gpresult /r`, and `gpresult /h`. Check OU link, security filtering, WMI filters, SYSVOL access, DNS, and replication. A GPO linked to a computer OU will not apply user settings unless loopback processing is configured.
+When diagnosing issues, follow this order:
 
-## DNS Name Does Not Exist
+1. Identity (user/account state)  
+2. Network connectivity  
+3. DNS resolution  
+4. Permissions and access  
+5. Service status  
 
-Use `Resolve-DnsName name -Server 192.168.100.10` and confirm the record exists in the correct zone. Flush client cache with `ipconfig /flushdns`. If AD-integrated DNS is used, check replication before assuming the record is missing everywhere.
+Avoid changing multiple things at once.
 
-## Operational Quality Notes
+---
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+## Common Issues
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `common-errors-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+---
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+### Account Locked Out
 
-After completing the procedure, compare the outcome with [troubleshooting-methodology.md](troubleshooting-methodology.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+**Cause:**  
+Repeated failed login attempts trigger lockout policy.
+
+**Check:**
+
+```powershell
+Search-ADAccount -LockedOut
+
+Event log (Domain Controller):
+
+Event ID: 4740
+
+Fix:
+
+Unlock account
+Clear saved credentials on client device
+Network Path Not Found
+
+Cause:
+DNS, SMB, firewall, or server not reachable.
+
+Check:
+
+Resolve-DnsName FS01
+Test-NetConnection FS01 -Port 445
+
+On server:
+
+Get-SmbShare
+
+Fix:
+
+Resolve DNS issues
+Ensure SMB service is running
+Check firewall rules
+Access Is Denied
+
+Cause:
+Authentication works, but permissions are insufficient.
+
+Check:
+
+whoami /groups
+Get-SmbShareAccess
+icacls C:\Path
+
+Fix:
+
+Adjust NTFS or share permissions
+Ensure correct group membership
+Ask user to log out/in after changes
+Group Policy Not Applying
+
+Cause:
+Incorrect OU, filtering, or replication issues.
+
+Check:
+
+gpupdate /force
+gpresult /r
+gpresult /h report.html
+
+Fix:
+
+Verify OU link
+Check security filtering
+Confirm SYSVOL and replication
+Validate DNS
+DNS Name Does Not Exist
+
+Cause:
+Missing or incorrect DNS record.
+
+Check:
+
+Resolve-DnsName name -Server 192.168.100.10
+ipconfig /flushdns
+
+Fix:
+
+Create or correct DNS record
+Verify zone
+Check replication if AD-integrated
+Expected Outcome
+Issues are diagnosed using structured steps
+Root cause is identified before changes
+Fixes are applied based on evidence, not guesswork
+Summary
+
+This section demonstrates practical troubleshooting skills used in real environments. It emphasizes structured diagnostics, correct tool usage, and disciplined problem-solving.

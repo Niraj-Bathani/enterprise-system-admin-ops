@@ -1,31 +1,49 @@
 # Operational Reports
 
-## Purpose
+## Overview
 
-Reports turn routine checks into evidence. These scripts support account review, lockout monitoring, and stale computer cleanup. This section is designed as a practical runbook set, not a theory-only reference. Each guide starts with the business reason, walks through both GUI and PowerShell approaches when appropriate, and finishes with verification and troubleshooting. The examples assume `lab.local`, `DC01` at `192.168.100.10`, `CLIENT01` at `192.168.100.20`, and an Ubuntu host at `192.168.100.30` where cross-platform validation is needed.
+This section provides reporting tools used to analyze user activity, account lockouts, and system hygiene within an Active Directory environment.
 
-## Recommended Order
+The purpose of these reports is not just to collect data, but to support operational decisions such as identifying inactive accounts, investigating lockouts, and maintaining directory health.
 
-- [last-logon-report.ps1](last-logon-report.ps1) - Export last logon information for AD users.
-- [locked-accounts-report.ps1](locked-accounts-report.ps1) - Report currently locked accounts.
-- [stale-computers-report.ps1](stale-computers-report.ps1) - Identify stale computer objects.
+---
 
-Follow the numbered documents in order unless you are responding to a specific incident. The order matters because later procedures often rely on earlier ones. For example, a mapped drive GPO is easier to validate after the file server permissions are known-good, and DHCP troubleshooting is easier after DNS has already been verified. When a guide references another folder, use the relative links rather than searching manually; this mirrors the way production runbooks should direct technicians to the next trusted source of information.
+## What This Section Demonstrates
 
-## Operating Standard
+- Ability to transform raw data into actionable insights  
+- Monitoring of user and system activity  
+- Support for service desk troubleshooting and audits  
+- Practical reporting aligned with real-world sysadmin workflows  
 
-Reports should be scheduled, reviewed, and acted on. A report that nobody reads is operational noise, so assign ownership and expected remediation steps.
+---
 
-Before changing a domain, policy, DNS zone, DHCP scope, share, backup job, or patch state, record the current value and the reason for the change. Use PowerShell transcripts for commands and capture screenshots for GUI actions. Save evidence with a consistent name under the local `screenshots` directory, then update the markdown image tag after the lab execution. Do not use mock screenshots; the point of this repository is to show real operational work.
+## Lab Context
 
-## Validation Pattern
+Examples in this section use:
 
-Every guide follows the same validation pattern. First, verify the server-side configuration with an administrative tool. Second, test from a client computer using a standard account. Third, review the relevant event log if the behavior does not match the expected state. Fourth, document the result in the ticket or change record. This pattern keeps troubleshooting disciplined and reduces the chance that a change is declared complete simply because it looked correct on the server.
+- Domain: `lab.local`  
+- Domain Controller: `DC01 (192.168.100.10)`  
+- Client: `CLIENT01 (192.168.100.20)`  
+- Linux Server: `UBUNTU01 (192.168.100.30)`  
 
-## Troubleshooting Mindset
+---
 
-When something fails, avoid changing several settings at once. Check identity, network, name resolution, time, permissions, policy scope, and service state in that order. A locked account, stale DNS cache, missing OU link, stopped service, or inherited deny permission can create symptoms that look much larger than the actual root cause. Keep the exact error message in the notes because Windows administrative errors are often searchable and event IDs provide strong clues.
+## Report Overview
 
-## Production Notes
+- [last-logon-report.ps1](last-logon-report.ps1)  
+  Classifies users as Active, Inactive, or NeverLoggedIn to support account review.
 
-In production, add peer review and change approval before applying these steps. Test policy and script changes against a pilot OU, schedule disruptive work outside business hours, and confirm rollback instructions. For shared services such as DNS, DHCP, file services, and domain controllers, notify the service desk before work begins so incoming calls can be correlated with the change window. The lab is intentionally small, but the habits practiced here scale to larger environments.
+- [locked-accounts-report.ps1](locked-accounts-report.ps1)  
+  Identifies locked accounts and highlights recent lockout activity.
+
+- [stale-computers-report.ps1](stale-computers-report.ps1)  
+  Detects unused computer objects for cleanup and security.
+
+---
+
+## Example Usage
+
+```powershell
+.\last-logon-report.ps1 -SearchBase 'OU=Users,DC=lab,DC=local'
+.\locked-accounts-report.ps1
+.\stale-computers-report.ps1 -DaysInactive 60

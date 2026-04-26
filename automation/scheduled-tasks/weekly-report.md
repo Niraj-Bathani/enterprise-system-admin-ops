@@ -1,31 +1,113 @@
 # Weekly Report Scheduled Task
 
+## Overview
+
+This task automates the execution of operational reports on a weekly basis. It ensures regular visibility into system health, user activity, and potential issues before they escalate into incidents.
+
+---
+
+## What This Demonstrates
+
+- Scheduling and automation of reporting workflows  
+- Aggregating multiple scripts into a single execution  
+- Operational monitoring and proactive maintenance  
+- Structured review and follow-up processes  
+
+---
+
 ## Objective
 
-Create a weekly scheduled task that runs operational reports and stores output for review. Weekly reports help identify stale accounts, locked accounts, low disk space, recent restarts, and other patterns before they become incidents.
+Create a scheduled task that runs a set of operational reports weekly and stores the results for review and action.
+
+---
 
 ## Report Set
 
-A useful lab report can run `last-logon-report.ps1`, `locked-accounts-report.ps1`, `stale-computers-report.ps1`, `disk-space-report.ps1`, and `server-uptime-check.ps1`. Each script writes logs under `C:\Logs` and returns structured output. In production, combine this with email, ticket creation, or dashboard ingestion only after the script output is trusted.
+The weekly report includes:
 
-## Example Task
+- `last-logon-report.ps1`  
+- `locked-accounts-report.ps1`  
+- `stale-computers-report.ps1`  
+- `disk-space-report.ps1`  
+- `server-uptime-check.ps1`  
 
-Create a wrapper script at `C:\Scripts\WeeklyOpsReport.ps1` that calls each report with explicit parameters. Register a task with `New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At 7:00am`. The action should run PowerShell with `-NoProfile` and a fully qualified script path. Avoid relying on mapped drives because scheduled tasks often run without an interactive user profile.
+Each script generates logs under `C:\Logs` and exports structured output.
 
-## Review Process
+---
 
-Assign an owner to review the report every Monday. The owner should open tickets for cleanup work rather than silently changing accounts. For example, stale computers should be validated with endpoint inventory before disabling. Locked account trends should be compared with incident records.
+## Wrapper Script Example
 
-## Screenshot Capture
+```powershell
+# WeeklyOpsReport.ps1
 
-Use `![Weekly report task](./screenshots/weekly-report-task.png)` after lab execution. Capture Task Scheduler history, last run result, and the generated report folder.
+$logPath = "C:\Logs\WeeklyReport"
 
-## Operational Quality Notes
+New-Item -ItemType Directory -Path $logPath -Force | Out-Null
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+.\last-logon-report.ps1 -SearchBase 'OU=Users,DC=lab,DC=local'
+.\locked-accounts-report.ps1
+.\stale-computers-report.ps1 -SearchBase 'DC=lab,DC=local'
+.\disk-space-report.ps1 -ComputerName DC01
+.\server-uptime-check.ps1 -ComputerName DC01
+Scheduled Task Configuration
+$action = New-ScheduledTaskAction `
+    -Execute "PowerShell.exe" `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\Scripts\WeeklyOpsReport.ps1"
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `weekly-report-scheduled-task-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+$trigger = New-ScheduledTaskTrigger `
+    -Weekly `
+    -DaysOfWeek Monday `
+    -At 7:00am
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Register-ScheduledTask `
+    -TaskName "LAB Weekly Ops Report" `
+    -Action $action `
+    -Trigger $trigger
+Expected Outcome
+Reports are generated weekly
+Output files are stored in C:\Logs
+Task completes successfully (Last Run Result = 0x0)
+Logs reflect successful execution
+Review Process
 
-After completing the procedure, compare the outcome with [README.md](../reports/README.md), [README.md](../health-checks/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+Assign a responsible owner to review reports every week.
+
+Typical actions:
+
+Investigate locked accounts
+Disable inactive users
+Review stale computer objects
+Address low disk space
+
+Changes should be tracked via tickets rather than applied silently.
+
+Validation
+Run the task manually
+Check Task Scheduler history
+Verify report files are created
+Confirm script outputs are correct
+
+📸 Screenshot:
+
+![Weekly report task](./screenshots/weekly-report-task.png)
+Troubleshooting
+
+If the task does not run:
+
+Verify credentials and permissions
+Confirm script path and execution policy
+Check Task Scheduler history
+
+If reports are incomplete:
+
+Validate script execution
+Confirm paths and parameters
+Review logs under C:\Logs
+Production Considerations
+Use service accounts with least privilege
+Schedule during non-business hours
+Integrate with monitoring or ticketing systems
+Ensure reports are reviewed and acted upon
+Summary
+
+This task demonstrates how to automate recurring reporting workflows and turn system data into actionable insights. It reflects real-world operational practices used to maintain system health and prevent incidents.

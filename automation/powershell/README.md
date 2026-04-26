@@ -1,33 +1,56 @@
 # PowerShell Automation
 
-## Purpose
+## Overview
 
-These scripts automate common Windows administration tasks while following enterprise expectations for help, parameters, validation, logging, and error handling. This section is designed as a practical runbook set, not a theory-only reference. Each guide starts with the business reason, walks through both GUI and PowerShell approaches when appropriate, and finishes with verification and troubleshooting. The examples assume `lab.local`, `DC01` at `192.168.100.10`, `CLIENT01` at `192.168.100.20`, and an Ubuntu host at `192.168.100.30` where cross-platform validation is needed.
+This section contains PowerShell scripts used to automate common Windows administration tasks such as user management, reporting, and system monitoring.
 
-## Recommended Order
+The scripts are designed to reflect real enterprise practices, including validation, logging, error handling, and safe execution using `-WhatIf`.
 
-- [bulk-user-create.ps1](bulk-user-create.ps1) - Create AD users from a CSV file.
-- [reset-password.ps1](reset-password.ps1) - Reset and optionally unlock a user account.
-- [disable-inactive-users.ps1](disable-inactive-users.ps1) - Disable inactive users with report evidence.
-- [disk-space-report.ps1](disk-space-report.ps1) - Collect disk usage from servers.
-- [installed-software-report.ps1](installed-software-report.ps1) - Inventory installed software safely.
+---
 
-Follow the numbered documents in order unless you are responding to a specific incident. The order matters because later procedures often rely on earlier ones. For example, a mapped drive GPO is easier to validate after the file server permissions are known-good, and DHCP troubleshooting is easier after DNS has already been verified. When a guide references another folder, use the relative links rather than searching manually; this mirrors the way production runbooks should direct technicians to the next trusted source of information.
+## What This Section Demonstrates
 
-## Operating Standard
+- Automation of repetitive administrative tasks
+- Safe execution using `ShouldProcess` and `-WhatIf`
+- Input validation and error handling
+- Logging and reporting for operational visibility
+- Practical scripting aligned with real sysadmin workflows
 
-Run scripts with `-WhatIf` where supported, read comment-based help with `Get-Help`, and review logs under `C:\Logs` after every execution.
+---
 
-Before changing a domain, policy, DNS zone, DHCP scope, share, backup job, or patch state, record the current value and the reason for the change. Use PowerShell transcripts for commands and capture screenshots for GUI actions. Save evidence with a consistent name under the local `screenshots` directory, then update the markdown image tag after the lab execution. Do not use mock screenshots; the point of this repository is to show real operational work.
+## Lab Context
 
-## Validation Pattern
+Examples in this section use:
 
-Every guide follows the same validation pattern. First, verify the server-side configuration with an administrative tool. Second, test from a client computer using a standard account. Third, review the relevant event log if the behavior does not match the expected state. Fourth, document the result in the ticket or change record. This pattern keeps troubleshooting disciplined and reduces the chance that a change is declared complete simply because it looked correct on the server.
+- Domain: `lab.local`  
+- Domain Controller: `DC01 (192.168.100.10)`  
+- Client: `CLIENT01 (192.168.100.20)`  
+- Linux Server: `UBUNTU01 (192.168.100.30)`  
 
-## Troubleshooting Mindset
+---
 
-When something fails, avoid changing several settings at once. Check identity, network, name resolution, time, permissions, policy scope, and service state in that order. A locked account, stale DNS cache, missing OU link, stopped service, or inherited deny permission can create symptoms that look much larger than the actual root cause. Keep the exact error message in the notes because Windows administrative errors are often searchable and event IDs provide strong clues.
+## Script Overview
 
-## Production Notes
+- [bulk-user-create.ps1](bulk-user-create.ps1)  
+  Creates Active Directory users from a CSV file with validation and logging.
 
-In production, add peer review and change approval before applying these steps. Test policy and script changes against a pilot OU, schedule disruptive work outside business hours, and confirm rollback instructions. For shared services such as DNS, DHCP, file services, and domain controllers, notify the service desk before work begins so incoming calls can be correlated with the change window. The lab is intentionally small, but the habits practiced here scale to larger environments.
+- [reset-password.ps1](reset-password.ps1)  
+  Resets user passwords and optionally unlocks accounts.
+
+- [disable-inactive-users.ps1](disable-inactive-users.ps1)  
+  Identifies and disables inactive accounts with reporting.
+
+- [disk-space-report.ps1](disk-space-report.ps1)  
+  Collects disk usage data and flags low space conditions.
+
+- [installed-software-report.ps1](installed-software-report.ps1)  
+  Safely inventories installed applications without triggering repairs.
+
+---
+
+## Example Usage
+
+```powershell
+.\bulk-user-create.ps1 -CsvPath .\users.csv -DomainName lab.local -UserBaseOu 'OU=Users,DC=lab,DC=local' -WhatIf
+.\disable-inactive-users.ps1 -DaysInactive 90 -SearchBase 'OU=Users,DC=lab,DC=local'
+.\disk-space-report.ps1 -ComputerName DC01,FS01

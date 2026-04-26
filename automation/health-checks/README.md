@@ -1,31 +1,125 @@
 # Health Checks
 
-## Purpose
+## Overview
 
-Health checks provide early warning for domain controller, DNS, and uptime problems before users call the service desk. This section is designed as a practical runbook set, not a theory-only reference. Each guide starts with the business reason, walks through both GUI and PowerShell approaches when appropriate, and finishes with verification and troubleshooting. The examples assume `lab.local`, `DC01` at `192.168.100.10`, `CLIENT01` at `192.168.100.20`, and an Ubuntu host at `192.168.100.30` where cross-platform validation is needed.
+This section provides operational health checks for critical infrastructure components including domain controllers, DNS, and server uptime.
+
+The goal is to detect issues early, before they impact users, and to provide repeatable checks that can be used in daily operations or weekly reviews.
+
+---
+
+## What This Section Demonstrates
+
+- Proactive system monitoring and validation  
+- Ability to identify service failures before user impact  
+- Structured troubleshooting and verification workflow  
+- Real-world operational runbooks used by system administrators  
+
+---
+
+## Lab Context
+
+Examples in this section use:
+
+- Domain: `lab.local`  
+- Domain Controller: `DC01 (192.168.100.10)`  
+- Client: `CLIENT01 (192.168.100.20)`  
+- Linux Server: `UBUNTU01 (192.168.100.30)`  
+
+---
 
 ## Recommended Order
 
-- [dc-health-check.ps1](dc-health-check.ps1) - Check domain controller services, shares, replication, and dcdiag.
-- [dns-health-check.ps1](dns-health-check.ps1) - Resolve key records against the intended DNS server.
-- [server-uptime-check.ps1](server-uptime-check.ps1) - Report uptime and recent restarts.
+Run these checks in sequence to isolate issues efficiently:
 
-Follow the numbered documents in order unless you are responding to a specific incident. The order matters because later procedures often rely on earlier ones. For example, a mapped drive GPO is easier to validate after the file server permissions are known-good, and DHCP troubleshooting is easier after DNS has already been verified. When a guide references another folder, use the relative links rather than searching manually; this mirrors the way production runbooks should direct technicians to the next trusted source of information.
+- [dc-health-check.ps1](dc-health-check.ps1)  
+  Validates domain controller services, SYSVOL/NETLOGON shares, replication, and directory health.
 
-## Operating Standard
+- [dns-health-check.ps1](dns-health-check.ps1)  
+  Verifies DNS service status and ensures critical records resolve correctly.
 
-Health checks should produce clear pass/fail output, write logs, and be easy to attach to a weekly operations review.
+- [server-uptime-check.ps1](server-uptime-check.ps1)  
+  Identifies unexpected restarts and system stability issues.
 
-Before changing a domain, policy, DNS zone, DHCP scope, share, backup job, or patch state, record the current value and the reason for the change. Use PowerShell transcripts for commands and capture screenshots for GUI actions. Save evidence with a consistent name under the local `screenshots` directory, then update the markdown image tag after the lab execution. Do not use mock screenshots; the point of this repository is to show real operational work.
+The order matters because many services depend on DNS and Active Directory. Resolving foundational issues first reduces troubleshooting complexity.
 
-## Validation Pattern
+---
 
-Every guide follows the same validation pattern. First, verify the server-side configuration with an administrative tool. Second, test from a client computer using a standard account. Third, review the relevant event log if the behavior does not match the expected state. Fourth, document the result in the ticket or change record. This pattern keeps troubleshooting disciplined and reduces the chance that a change is declared complete simply because it looked correct on the server.
+## Expected Output
 
-## Troubleshooting Mindset
+Each script should provide:
 
-When something fails, avoid changing several settings at once. Check identity, network, name resolution, time, permissions, policy scope, and service state in that order. A locked account, stale DNS cache, missing OU link, stopped service, or inherited deny permission can create symptoms that look much larger than the actual root cause. Keep the exact error message in the notes because Windows administrative errors are often searchable and event IDs provide strong clues.
+- Clear pass/fail results  
+- Service status information  
+- Error messages when failures occur  
+- A log file for audit or review  
 
-## Production Notes
+Example:
 
-In production, add peer review and change approval before applying these steps. Test policy and script changes against a pilot OU, schedule disruptive work outside business hours, and confirm rollback instructions. For shared services such as DNS, DHCP, file services, and domain controllers, notify the service desk before work begins so incoming calls can be correlated with the change window. The lab is intentionally small, but the habits practiced here scale to larger environments.
+
+Service: DNS Running
+dcdiag: Passed
+Replication: Healthy
+
+
+---
+
+## Example Usage
+
+```powershell
+.\dc-health-check.ps1 -DomainController DC01
+.\dns-health-check.ps1 -DnsServer 192.168.100.10 -NamesToResolve lab.local,dc01.lab.local
+Operating Standard
+
+Health checks should:
+
+Produce clear, readable output
+Write logs for traceability
+Be repeatable and safe to run regularly
+
+Before making any changes:
+
+Record current configuration
+Capture PowerShell output
+Take screenshots for GUI actions
+
+All evidence should be stored in the screenshots/ directory and referenced in documentation.
+
+Validation Pattern
+
+Every check follows this process:
+
+Verify server-side configuration
+Test from a client system
+Review event logs if needed
+Document the result
+
+This ensures changes are validated from both administrative and user perspectives.
+
+Troubleshooting Approach
+
+When a failure occurs, validate in this order:
+
+Identity (user/account)
+Network connectivity
+DNS resolution
+Time synchronization
+Permissions
+Group Policy
+Service status
+
+Avoid making multiple changes at once. Use logs and error messages to guide decisions.
+
+Production Notes
+
+In a production environment:
+
+Changes require approval and peer review
+Test changes in a pilot environment first
+Schedule work during maintenance windows
+Communicate with the service desk before and after changes
+Always prepare rollback steps
+
+Summary
+
+This section demonstrates how to move from reactive troubleshooting to proactive system monitoring. The scripts and validation steps reflect real-world administrative workflows used to maintain system reliability.

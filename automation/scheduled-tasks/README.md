@@ -1,40 +1,101 @@
 # Scheduled Tasks
 
-## Purpose
+## Overview
 
-Scheduled tasks run reports and cleanup jobs consistently without relying on a person to remember them. This section is designed as a practical runbook set, not a theory-only reference. Each guide starts with the business reason, walks through both GUI and PowerShell approaches when appropriate, and finishes with verification and troubleshooting. The examples assume `lab.local`, `DC01` at `192.168.100.10`, `CLIENT01` at `192.168.100.20`, and an Ubuntu host at `192.168.100.30` where cross-platform validation is needed.
+This section demonstrates how recurring administrative tasks are automated using Windows Task Scheduler. These tasks ensure consistency, reduce manual effort, and provide reliable execution of maintenance and reporting operations.
 
-## Recommended Order
+---
 
-- [nightly-cleanup.md](nightly-cleanup.md) - Create a nightly cleanup scheduled task.
-- [weekly-report.md](weekly-report.md) - Create a weekly report scheduled task.
+## What This Section Demonstrates
 
-Follow the numbered documents in order unless you are responding to a specific incident. The order matters because later procedures often rely on earlier ones. For example, a mapped drive GPO is easier to validate after the file server permissions are known-good, and DHCP troubleshooting is easier after DNS has already been verified. When a guide references another folder, use the relative links rather than searching manually; this mirrors the way production runbooks should direct technicians to the next trusted source of information.
+- Automation of recurring system tasks  
+- Use of Task Scheduler with PowerShell scripts  
+- Secure execution using least-privilege principles  
+- Validation and monitoring of scheduled jobs  
 
-## Operating Standard
+---
 
-Use managed service accounts or dedicated least-privilege task accounts in production. In the lab, run tasks under an authorized administrator and document the trigger, action, and log path.
+## Lab Context
 
-Before changing a domain, policy, DNS zone, DHCP scope, share, backup job, or patch state, record the current value and the reason for the change. Use PowerShell transcripts for commands and capture screenshots for GUI actions. Save evidence with a consistent name under the local `screenshots` directory, then update the markdown image tag after the lab execution. Do not use mock screenshots; the point of this repository is to show real operational work.
+Examples in this section use:
 
-## Validation Pattern
+- Domain: lab.local  
+- Domain Controller: DC01 (192.168.100.10)  
+- Client: CLIENT01 (192.168.100.20)  
+- Linux Server: UBUNTU01 (192.168.100.30)  
 
-Every guide follows the same validation pattern. First, verify the server-side configuration with an administrative tool. Second, test from a client computer using a standard account. Third, review the relevant event log if the behavior does not match the expected state. Fourth, document the result in the ticket or change record. This pattern keeps troubleshooting disciplined and reduces the chance that a change is declared complete simply because it looked correct on the server.
+---
 
-## Troubleshooting Mindset
+## Task Overview
 
-When something fails, avoid changing several settings at once. Check identity, network, name resolution, time, permissions, policy scope, and service state in that order. A locked account, stale DNS cache, missing OU link, stopped service, or inherited deny permission can create symptoms that look much larger than the actual root cause. Keep the exact error message in the notes because Windows administrative errors are often searchable and event IDs provide strong clues.
+- [nightly-cleanup.md](nightly-cleanup.md)  
+  Automates cleanup of old logs and temporary files.
 
-## Production Notes
+- [weekly-report.md](weekly-report.md)  
+  Runs reporting scripts on a weekly schedule.
 
-In production, add peer review and change approval before applying these steps. Test policy and script changes against a pilot OU, schedule disruptive work outside business hours, and confirm rollback instructions. For shared services such as DNS, DHCP, file services, and domain controllers, notify the service desk before work begins so incoming calls can be correlated with the change window. The lab is intentionally small, but the habits practiced here scale to larger environments.
+---
 
-## Operational Quality Notes
+## Example Configuration
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+```powershell
+$action = New-ScheduledTaskAction `
+    -Execute "PowerShell.exe" `
+    -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\Scripts\script.ps1"
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `scheduled-tasks-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+$trigger = New-ScheduledTaskTrigger -Daily -At 2:00am
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Register-ScheduledTask `
+    -TaskName "Example Task" `
+    -Action $action `
+    -Trigger $trigger
+Expected Outcome
 
-After completing the procedure, compare the outcome with [nightly-cleanup.md](nightly-cleanup.md), [weekly-report.md](weekly-report.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+Scheduled tasks should:
+
+Execute at defined intervals
+Complete successfully (Last Run Result = 0x0)
+Generate logs or reports
+Perform only intended actions
+Operating Standard
+
+In production environments:
+
+Use managed service accounts or dedicated task accounts
+Assign least privilege required
+Document task purpose, trigger, and script path
+Monitor execution regularly
+
+In the lab:
+
+Use administrator account
+Focus on correct configuration and validation
+Validation
+
+To validate a scheduled task:
+
+Run the task manually
+Check Last Run Result
+Review script logs or output
+Confirm expected behavior
+Troubleshooting
+
+If the task does not run:
+
+Verify credentials and permissions
+Check trigger configuration
+Confirm script path and execution policy
+
+If the task runs but produces incorrect results:
+
+Validate script logic
+Check working directory
+Review logs
+Production Considerations
+Schedule tasks during maintenance windows
+Monitor failures and alert when needed
+Maintain rollback procedures
+Ensure tasks do not impact system performance
+Summary
+
+This section demonstrates how to automate recurring administrative operations using scheduled tasks. It emphasizes reliability, validation, and operational discipline required in real-world environments.
