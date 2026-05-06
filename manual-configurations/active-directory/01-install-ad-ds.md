@@ -61,7 +61,7 @@ For client-side checks, sign in as a normal lab user such as `lab\jsmith`, open 
 
 ## Screenshot Capture
 
-![AD DS installed](screenshots/ad-ds-installed.png)
+![AD DS installed](../screenshots/ad-ds-installed.png)
 
 
 
