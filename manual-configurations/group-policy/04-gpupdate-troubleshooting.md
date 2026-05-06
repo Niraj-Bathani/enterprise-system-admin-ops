@@ -1,6 +1,3 @@
-Here's your corrected `gpupdate-troubleshooting.md` file. I fixed the missing heading for **Prerequisites**, improved formatting for tables and commands, and updated the screenshot reference to match your existing `gprest-output.png` (the actual screenshot you have).
-
-```markdown
 # GPUpdate Troubleshooting
 
 ## Objective
