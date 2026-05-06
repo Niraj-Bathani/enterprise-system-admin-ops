@@ -1,33 +1,191 @@
 # Incident 01 Login Failure - Fix
 
-## Resolution Objective
+## Objective
 
-The fix restored service while preserving auditability. The administrator applied the smallest change that addressed the proven root cause: unlock the account, reset the password, require change at logon, and clear saved credentials. No broad permissions, domain-wide policy edits, or service restarts were used unless the diagnostic evidence showed they were required.
+Restore user access by resolving the confirmed account lockout issue while maintaining proper audit logging and validation.
 
-## Fix Procedure
+---
 
-1. Notify the requester that remediation is starting.
-2. Start an elevated PowerShell transcript on `DC01`.
-3. Run the fix command or GUI action: `Unlock-ADAccount -Identity jsmith`.
-4. Refresh the affected client state with `gpupdate /force`, sign out and sign back in, or clear the relevant cache.
-5. Ask the requester to repeat the original action while the technician observes.
-6. Confirm the related event logs no longer show the failure.
-7. Update the ticket with the exact change, validation result, and resolution time.
+# Environment
 
-## GUI Path
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| CLIENT01 | Windows Client | 192.168.100.20 |
 
-Use the matching Microsoft management console when a GUI audit screenshot is useful. For account issues, open Active Directory Users and Computers, locate the user, review the Account tab, and apply the account-specific action. For GPO issues, open Group Policy Management Console, confirm link and security filtering, then run Group Policy Results. For file access, open the folder's Advanced Security settings and review effective access.
+Domain:
 
-## Validation
+```text
+lab.local
+```
 
-Validation must happen from the user's perspective. A domain admin test is not enough because administrators bypass many restrictions. Have the affected user sign in again, access the same application or share, and confirm normal work can continue. Capture the successful command output or console view after the lab run and store it in the incident evidence folder.
+---
 
-## Operational Quality Notes
+# Prerequisites
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+Before starting:
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-01-login-failure-fix-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+- Domain Admin access available
+- Active Directory operational
+- CLIENT01 connected to the domain
+- PowerShell running as Administrator
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Verify domain connectivity:
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+```powershell
+Resolve-DnsName lab.local
+```
+
+Verify Active Directory access:
+
+```powershell
+Get-ADDomain
+```
+
+---
+
+# Resolution Procedure
+
+## Start PowerShell Transcript
+
+```powershell
+Start-Transcript -Path C:\Logs\incident-01-login-fix.txt -Append
+```
+
+---
+
+## Unlock The User Account
+
+```powershell
+Unlock-ADAccount -Identity jsmith
+```
+
+Verify account status:
+
+```powershell
+Get-ADUser jsmith -Properties LockedOut
+```
+
+Expected result:
+
+```text
+LockedOut : False
+```
+
+---
+
+## Reset Password
+
+```powershell
+Set-ADAccountPassword `
+-Identity jsmith `
+-Reset `
+-NewPassword (ConvertTo-SecureString 'P@ssw0rd123!' -AsPlainText -Force)
+```
+
+Require password change at next sign-in:
+
+```powershell
+Set-ADUser `
+-Identity jsmith `
+-ChangePasswordAtLogon $true
+```
+
+---
+
+# Refresh Client State
+
+On CLIENT01 run:
+
+```powershell
+gpupdate /force
+```
+
+Sign out and sign back in using the updated credentials.
+
+---
+
+# GUI Path
+
+For GUI validation:
+
+```text
+Server Manager
+→ Tools
+→ Active Directory Users and Computers
+```
+
+Locate:
+
+```text
+lab.local
+→ Users
+→ jsmith
+```
+
+Review:
+- account status
+- lockout state
+- password settings
+
+Confirm the account is unlocked.
+
+---
+
+# Validation
+
+Verify no accounts remain locked:
+
+```powershell
+Search-ADAccount -LockedOut
+```
+
+Verify secure channel:
+
+```powershell
+nltest /sc_verify:lab.local
+```
+
+Verify Group Policy processing:
+
+```powershell
+gpresult /r
+```
+
+Confirm the user can:
+- sign in successfully
+- access domain resources
+- open mapped drives
+- authenticate without lockout errors
+
+---
+
+# Event Log Verification
+
+Open:
+
+```text
+Event Viewer
+→ Windows Logs
+→ Security
+```
+
+Verify:
+- no new Event ID 4740 lockouts
+- successful authentication events present
+- no repeated credential failures
+
+---
+
+# Stop PowerShell Transcript
+
+```powershell
+Stop-Transcript
+```
+
+---
+
+# Screenshot Capture
+
+![Incident login fix](../screenshots/incident-01-login-fix.png)
+
