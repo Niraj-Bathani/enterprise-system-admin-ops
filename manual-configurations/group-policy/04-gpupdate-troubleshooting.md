@@ -204,5 +204,5 @@ repadmin /syncall /AdeP
 
 ## Screenshot Capture
 
-![gpresult output showing applied GPOs](/screenshots/gprest-output.png)
+![gpresult output showing applied GPOs](/screenshots/gpupdate-troubleshooting.png)
 
