@@ -1,27 +1,153 @@
 # Incident 02 GPO Not Applying - Lessons Learned
 
-## What Went Well
+## Objective
 
-The incident was handled effectively because the team followed a repeatable diagnostic path and recorded evidence before applying changes. The technician did not assume the first visible symptom was the root cause. Communication stayed clear: the requester received updates, the ticket captured the actions, and the validation was performed from the affected user's point of view.
+Document operational lessons learned after resolving the Group Policy mapping failure in the `lab.local` environment.
 
-## What Can Improve
+---
 
-The main improvement is earlier detection. A mandatory pilot validation with `gpresult /h` would have caught the wrong OU link immediately. A small monitoring rule or scheduled report would have shortened the time between the first failed event and the support response. The team should also improve knowledge base linking so that common fixes are not rediscovered by each shift.
+# What Went Well
 
-## Runbook Updates
+The incident response was effective because:
 
-Update the relevant operational guide and link it from the ticket. If the incident involved identity, reference [Active Directory procedures](../../manual-configurations/active-directory/README.md). If it involved policy, reference [Group Policy procedures](../../manual-configurations/group-policy/README.md). If it involved access, reference [File Server procedures](../../manual-configurations/file-server/README.md). If it involved name resolution, reference [DNS and DHCP procedures](../../manual-configurations/dns-dhcp/README.md).
+- technicians followed a structured troubleshooting process
+- evidence was collected before applying changes
+- validation was performed from the user perspective
+- the issue was isolated quickly to GPO scope and OU linking
 
-## Follow-Up Actions
+Successful practices included:
 
-Create a follow-up task for prevention, assign an owner, set a due date, and review completion at the next operations meeting. A lesson learned is only valuable if it changes behavior. In the lab, repeat the incident after remediation to confirm the detection and documentation are useful to another technician who did not work the original ticket.
+- using `gpresult /h`
+- reviewing Group Policy Operational logs
+- validating DNS before changing policy
+- documenting every troubleshooting step
 
-## Operational Quality Notes
+---
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+# Environment Reference
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-02-gpo-not-applying-lessons-learned-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| CLIENT01 | Windows Client | 192.168.100.20 |
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Domain:
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+```text
+lab.local
+```
+
+Affected resource:
+
+```text
+\\FS01\Sales
+```
+
+Mapped drive:
+
+```text
+S:
+```
+
+---
+
+# What Can Improve
+
+The incident exposed several operational weaknesses:
+
+- pilot validation was skipped
+- OU placement review was incomplete
+- GPO security filtering was not verified early
+- documentation links were not immediately referenced
+
+Recommended improvements:
+
+- require `gpresult /h` validation before rollout
+- implement change review checklist
+- standardize GPO deployment validation
+- improve runbook cross-references
+
+---
+
+# Runbook Updates
+
+Review and update these procedures:
+
+- Active Directory procedures
+- Group Policy procedures
+- File Server procedures
+- DNS and DHCP procedures
+
+Related documentation:
+
+```text
+../../manual-configurations/group-policy/README.md
+../../manual-configurations/file-server/README.md
+../../manual-configurations/dns-dhcp/README.md
+```
+
+---
+
+# Follow-Up Actions
+
+Create operational tasks for:
+
+- mandatory pilot OU testing
+- automated GPO validation reporting
+- scheduled gpresult reviews
+- periodic OU and security filtering audits
+
+Assign:
+- owner
+- due date
+- review cycle
+
+---
+
+# Recommended Validation Commands
+
+Verify applied Group Policy:
+
+```powershell
+gpresult /r
+```
+
+Generate HTML report:
+
+```powershell
+gpresult /h C:\Logs\sales-policy-validation.html
+```
+
+Verify OU location:
+
+```powershell
+Get-ADUser jsmith -Properties DistinguishedName
+```
+
+Verify GPO links:
+
+```powershell
+Get-GPInheritance `
+-Target 'OU=Sales,OU=Users,DC=lab,DC=local'
+```
+
+---
+
+# Operational Quality Notes
+
+Lessons learned are only valuable when they:
+- improve procedures
+- reduce future incidents
+- shorten troubleshooting time
+- improve documentation quality
+
+Repeat the incident simulation in the lab to confirm:
+- another technician can follow the documentation
+- validation steps remain accurate
+- prevention controls work correctly
+
+---
+
+# Screenshot Capture
+
+![Incident 02 GPO lessons learned](../screenshots/incident-02-gpo-lessons-learned.png)
