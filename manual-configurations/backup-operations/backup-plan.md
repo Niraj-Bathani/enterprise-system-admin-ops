@@ -1,31 +1,295 @@
+````markdown
 # Backup Plan
 
 ## Objective
 
-Define a lab backup plan that mirrors production thinking: identify what matters, choose frequency, define retention, test restore, and assign ownership. The lab focuses on `DC01`, file share data, configuration exports, and documentation evidence.
+Create a practical backup strategy for the `lab.local` environment that demonstrates enterprise backup planning, recovery preparation, retention management, and restore validation. The goal of this lab is not only to create backups, but also to prove that services and data can be recovered after failure.
 
-## Scope
+This backup workflow protects:
 
-Back up system state for `DC01`, file data from `FS01`, exported GPO reports, DHCP configuration, DNS zone data where applicable, and automation scripts. In production, Active Directory system state and file data usually have different recovery objectives. Domain controllers can often be rebuilt if another healthy DC exists, but a single-DC lab needs system state backup for realistic recovery practice.
+- `DC01` system state and Active Directory
+- `FS01` shared folder data
+- DHCP configuration
+- DNS configuration and zones where applicable
+- Group Policy backups and reports
+- PowerShell automation scripts
+- Repository documentation and operational evidence
 
-## Schedule
+The lab environment uses:
 
-Run daily file backups and weekly system state backups in the lab. Keep at least seven daily restore points and four weekly restore points. Use external storage or a separate virtual disk to avoid storing backups only on the system being protected. In production, align frequency with recovery point objective, business criticality, and compliance rules.
+- `DC01` — `192.168.100.10`
+- `FS01` — file services
+- `CLIENT01` — validation workstation
+- `lab.local` — Active Directory domain
 
-## Commands
+---
 
-For Windows Server Backup, install the feature with `Install-WindowsFeature Windows-Server-Backup`. A lab system state backup can be started with `wbadmin start systemstatebackup -backupTarget:E: -quiet`. File backups depend on the tool, but validation should include listing backup contents and restoring a sample file.
+# Backup Scope
 
-## Evidence
+## Domain Controller Protection
 
-Capture `![Backup verify](../../screenshots/backup-verify.png)` after the lab run. The image should show job success or restore proof. A backup plan is incomplete until restore testing is scheduled and documented.
+Domain controllers contain:
 
-## Operational Quality Notes
+- Active Directory database
+- SYSVOL
+- Group Policy objects
+- DNS integration
+- Kerberos and authentication services
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+A system state backup is critical in single-domain-controller environments because there is no second DC available for replication recovery.
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `backup-plan-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+Back up:
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+- System State
+- SYSVOL
+- Registry
+- Boot files
+- AD database (`NTDS.dit`)
 
-After completing the procedure, compare the outcome with [daily-checklist.md](daily-checklist.md), [restore-test.md](restore-test.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+---
+
+## File Server Protection
+
+Protect:
+
+- Department shares
+- User-accessible documents
+- Shared scripts
+- Configuration exports
+- Operational evidence
+
+Recommended folders:
+
+```text
+C:\Shares
+C:\Scripts
+C:\Logs
+````
+
+Avoid storing backups on the same disk being protected.
+
+---
+
+## Configuration Backups
+
+Export and retain:
+
+* GPO reports
+* DHCP configuration
+* DNS zone exports
+* Scheduled task exports
+* Firewall configurations
+
+Example export commands:
+
+```powershell
+Backup-GPO -All -Path C:\Backups\GPO
+Export-DhcpServer -File C:\Backups\dhcp.xml -Leases
+```
+
+---
+
+# Backup Schedule
+
+| Backup Type          | Frequency | Retention       | Notes                         |
+| -------------------- | --------- | --------------- | ----------------------------- |
+| File backup          | Daily     | 7 daily copies  | Department shares and scripts |
+| System state         | Weekly    | 4 weekly copies | Protect Active Directory      |
+| GPO export           | Weekly    | 4 copies        | Track policy changes          |
+| DHCP export          | Weekly    | 4 copies        | Preserve reservations/scopes  |
+| Documentation backup | Daily     | 14 copies       | Protect operational evidence  |
+
+---
+
+# Backup Storage Design
+
+Use a dedicated backup target such as:
+
+* External disk
+* Secondary virtual disk
+* NAS share
+* Separate datastore
+
+Do NOT store backups only on the source server.
+
+Example:
+
+```text
+E:\Backups
+```
+
+Production environments should use:
+
+* Immutable storage where possible
+* Offsite replication
+* Multi-location retention
+* Encrypted backup repositories
+
+---
+
+# Install Windows Server Backup
+
+Install the feature on `DC01`:
+
+```powershell
+Install-WindowsFeature Windows-Server-Backup
+```
+
+Verify installation:
+
+```powershell
+Get-WindowsFeature Windows-Server-Backup
+```
+
+---
+
+# Perform System State Backup
+
+Run a manual system state backup:
+
+```powershell
+wbadmin start systemstatebackup -backupTarget:E: -quiet
+```
+
+Expected result:
+
+* Backup starts successfully
+* Event logs show completion
+* Backup files appear under the target path
+
+Verify backup versions:
+
+```powershell
+wbadmin get versions
+```
+
+---
+
+# File Backup Example
+
+Copy shared data using `Robocopy`:
+
+```powershell
+robocopy C:\Shares E:\Backups\Shares /MIR /R:1 /W:1 /LOG:C:\Logs\Robocopy.log
+```
+
+Explanation:
+
+* `/MIR` mirrors folder structure
+* `/R:1` retries once
+* `/W:1` waits one second between retries
+* `/LOG` creates operational evidence
+
+---
+
+# Restore Validation
+
+A backup is incomplete until restore testing succeeds.
+
+Perform these validation tasks:
+
+1. Restore a sample file to an alternate location.
+2. Verify restored permissions.
+3. Confirm restored file integrity.
+4. Validate GPO backup readability.
+5. Confirm system state backup versions exist.
+
+Example file restore test:
+
+```powershell
+Copy-Item E:\Backups\Shares\Test.txt C:\RestoreTest\
+```
+
+---
+
+# Verification
+
+Run the following checks after backup execution:
+
+```powershell
+wbadmin get versions
+```
+
+```powershell
+Get-WinEvent -LogName Application | Where-Object ProviderName -Match 'Backup'
+```
+
+```powershell
+Get-ChildItem E:\Backups
+```
+
+Validation should confirm:
+
+* Backup completed successfully
+* Backup target contains data
+* No critical errors occurred
+* Restore testing succeeded
+
+---
+
+# Common Issues And Fixes
+
+* **Access denied:** Confirm the backup account has administrative rights and access to the target storage.
+
+* **Backup target not found:** Verify the disk is mounted and accessible before execution.
+
+* **Insufficient disk space:** Monitor retention growth and remove expired backups safely.
+
+* **VSS writer failures:** Restart affected services and verify Volume Shadow Copy health using:
+
+```powershell
+vssadmin list writers
+```
+
+* **Corrupted restore test:** Validate storage health and rerun backup after correcting the issue.
+
+---
+
+# Screenshot Capture
+
+![Backup verification](/screenshots/backup-verify.png)
+
+Capture the following evidence:
+
+* Windows Server Backup success message
+* `wbadmin get versions` output
+* Restore validation proof
+* Backup destination contents
+
+Recommended filename:
+
+```text
+backup-verify.png
+```
+
+---
+
+# Operational Quality Notes
+
+This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named systems such as `DC01`, `FS01`, and `CLIENT01`.
+
+In production:
+
+* Schedule backups during maintenance windows
+* Assign ownership for restore testing
+* Document retention requirements
+* Encrypt backup storage
+* Protect backup credentials
+* Monitor backup job failures automatically
+
+Backups should support:
+
+* Recovery Point Objective (RPO)
+* Recovery Time Objective (RTO)
+* Compliance requirements
+* Incident response
+* Disaster recovery planning
+
+The most important operational rule is:
+
+> A backup that has never been restored is only a theory.
+
+Always validate recovery procedures regularly.
+
+```
+```
