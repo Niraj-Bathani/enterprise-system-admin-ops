@@ -2,32 +2,152 @@
 
 ## Purpose
 
-File services demonstrate practical access control through shares, NTFS permissions, department folders, mapped drives, and access denied troubleshooting. This section is designed as a practical runbook set, not a theory-only reference. Each guide starts with the business reason, walks through both GUI and PowerShell approaches when appropriate, and finishes with verification and troubleshooting. The examples assume `lab.local`, `DC01` at `192.168.100.10`, `CLIENT01` at `192.168.100.20`, and an Ubuntu host at `192.168.100.30` where cross-platform validation is needed.
+This section covers practical Windows file server administration tasks using shared folders, NTFS permissions, department-based access control, mapped drives, and access troubleshooting.
 
-## Recommended Order
+The lab environment uses:
 
-- [01-create-shared-folder.md](01-create-shared-folder.md) - Create and share a folder on a Windows file server.
-- [02-ntfs-vs-share-permissions.md](02-ntfs-vs-share-permissions.md) - Explain and validate effective permissions.
-- [03-department-share-model.md](03-department-share-model.md) - Build a department share model with AD groups.
-- [04-map-network-drive.md](04-map-network-drive.md) - Map drives manually and through policy.
-- [05-access-denied-fix.md](05-access-denied-fix.md) - Diagnose and resolve access denied errors.
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| FS01 | File Server | 192.168.100.40 |
+| CLIENT01 | Windows Client | 192.168.100.20 |
 
-Follow the numbered documents in order unless you are responding to a specific incident. The order matters because later procedures often rely on earlier ones. For example, a mapped drive GPO is easier to validate after the file server permissions are known-good, and DHCP troubleshooting is easier after DNS has already been verified. When a guide references another folder, use the relative links rather than searching manually; this mirrors the way production runbooks should direct technicians to the next trusted source of information.
+Domain:
 
-## Operating Standard
+```text
+lab.local
+```
 
-File access changes must be tested with standard users. Administrators can mask permission mistakes, so validation should use the actual security group and user context.
+Primary shared path:
 
-Before changing a domain, policy, DNS zone, DHCP scope, share, backup job, or patch state, record the current value and the reason for the change. Use PowerShell transcripts for commands and capture screenshots for GUI actions. Save evidence with a consistent name under the local `screenshots` directory, then update the markdown image tag after the lab execution. Do not use mock screenshots; the point of this repository is to show real operational work.
+```text
+\\FS01\Sales
+```
 
-## Validation Pattern
+---
 
-Every guide follows the same validation pattern. First, verify the server-side configuration with an administrative tool. Second, test from a client computer using a standard account. Third, review the relevant event log if the behavior does not match the expected state. Fourth, document the result in the ticket or change record. This pattern keeps troubleshooting disciplined and reduces the chance that a change is declared complete simply because it looked correct on the server.
+# Recommended Order
 
-## Troubleshooting Mindset
+1. [01-create-shared-folder.md](01-create-shared-folder.md)  
+   Create and configure a shared folder.
 
-When something fails, avoid changing several settings at once. Check identity, network, name resolution, time, permissions, policy scope, and service state in that order. A locked account, stale DNS cache, missing OU link, stopped service, or inherited deny permission can create symptoms that look much larger than the actual root cause. Keep the exact error message in the notes because Windows administrative errors are often searchable and event IDs provide strong clues.
+2. [02-ntfs-vs-share-permissions.md](02-ntfs-vs-share-permissions.md)  
+   Validate effective access permissions.
 
-## Production Notes
+3. [03-department-share-model.md](03-department-share-model.md)  
+   Configure department-based access using AD security groups.
 
-In production, add peer review and change approval before applying these steps. Test policy and script changes against a pilot OU, schedule disruptive work outside business hours, and confirm rollback instructions. For shared services such as DNS, DHCP, file services, and domain controllers, notify the service desk before work begins so incoming calls can be correlated with the change window. The lab is intentionally small, but the habits practiced here scale to larger environments.
+4. [04-map-network-drive.md](04-map-network-drive.md)  
+   Configure mapped network drives manually and through Group Policy.
+
+5. [05-access-denied-fix.md](05-access-denied-fix.md)  
+   Troubleshoot and resolve file access problems.
+
+---
+
+# Operating Standard
+
+All file access changes must be tested using standard domain users.
+
+Administrative accounts may bypass permission restrictions and produce incorrect validation results.
+
+Before modifying:
+- shared folders
+- NTFS permissions
+- SMB permissions
+- mapped drives
+- security groups
+
+record the current configuration and verify:
+- DNS resolution
+- network connectivity
+- SMB access
+- Active Directory group membership
+
+Use PowerShell transcripts during administrative work:
+
+```powershell
+Start-Transcript -Path C:\Logs\fileserver-change.txt -Append
+```
+
+Store screenshots in:
+
+```text
+screenshots/
+```
+
+---
+
+# Validation Pattern
+
+Each procedure should follow the same validation workflow:
+
+1. Configure the change on the server.
+2. Verify configuration using PowerShell.
+3. Test access from `CLIENT01`.
+4. Validate with a standard domain user.
+5. Confirm expected permissions and file operations.
+
+Common validation commands:
+
+```powershell
+Get-SmbShare
+```
+
+```powershell
+Get-SmbShareAccess -Name Sales
+```
+
+```powershell
+icacls D:\Shares\Sales
+```
+
+```powershell
+Test-Path '\\FS01\Sales'
+```
+
+---
+
+# Troubleshooting Workflow
+
+When file access issues occur:
+
+1. Verify DNS resolution.
+2. Verify SMB connectivity.
+3. Verify share permissions.
+4. Verify NTFS permissions.
+5. Verify AD group membership.
+6. Verify user logon refresh.
+
+Useful troubleshooting commands:
+
+```powershell
+Resolve-DnsName FS01
+```
+
+```powershell
+Test-NetConnection FS01 -Port 445
+```
+
+```powershell
+whoami /groups
+```
+
+```powershell
+Get-ADPrincipalGroupMembership jsmith
+```
+
+---
+
+# Verification Requirements
+
+Each completed lab should verify:
+
+- Shared folders accessible
+- NTFS permissions applied correctly
+- Security groups functioning
+- Mapped drives operational
+- Standard users able to access approved data
+- Unauthorized access properly blocked
+
+Use screenshots and PowerShell output as operational evidence.
