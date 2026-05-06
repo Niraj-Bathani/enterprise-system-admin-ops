@@ -237,36 +237,5 @@ Running
 
 ![Daily backup check](/screenshots/daily-backup-check.png)
 
-Capture one of the following after validation:
-
-- `wbadmin get versions` output
-- Windows Server Backup success status
-- Backup event logs
-- Backup destination contents
-
-Recommended filename:
-
-```text
-daily-backup-check.png
-```
 
 ---
-
-# Operational Notes
-
-Although this environment is a lab, the same operational practices apply in production.
-
-Production backup operations should include:
-
-- automated monitoring
-- centralized alerting
-- retention management
-- scheduled restore testing
-- documented ownership
-- escalation procedures
-
-The primary operational principle is:
-
-> A backup is only valuable if recovery has been tested successfully.
-
-Always validate restore capability regularly.
