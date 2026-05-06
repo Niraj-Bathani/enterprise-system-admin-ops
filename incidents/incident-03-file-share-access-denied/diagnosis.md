@@ -1,40 +1,229 @@
 # Incident 03 File Share Access Denied - Diagnosis
 
-## Diagnostic Goal
+## Objective
 
-The goal was to prove the failing layer before applying a fix. For this incident, the suspected area was share permission, NTFS permission, and group membership validation. A disciplined diagnosis prevents temporary workarounds from hiding the actual cause. The technician worked from the client outward: user input, workstation state, DNS, domain controller reachability, account state, policy, then service logs.
+---
 
-## Step-By-Step Checks
+This procedure documents the diagnostic workflow used to identify the root cause of a file share access denial issue within the `lab.local` Windows Server 2022 environment.
 
-1. Confirm the user, computer, and time of failure in the ticket.
-2. On `CLIENT01`, run `ipconfig /all` and confirm DNS points to `192.168.100.10`.
-3. Run `nltest /dsgetdc:lab.local` to confirm the client can locate a domain controller.
-4. Run the incident-specific command: `icacls D:\Shares\Finance`.
-5. Open Event Viewer on `DC01` and filter Security logs for the relevant event IDs: Security 4663 when object access auditing is enabled.
-6. Compare the event timestamp with the user report and identify the source workstation or service.
-7. Document every result before changing account, policy, DNS, or permission state.
+The investigation focuses on validating:
 
-## Expected Findings
+- DNS resolution
+- Domain controller communication
+- NTFS permissions
+- Share permissions
+- Group membership
+- Security event logs
 
-The investigation should produce a concrete object and a concrete cause: a locked account, a denied group, a bad DNS record, a failed GPO scope, or a stale credential source. If the event logs show no matching activity, widen the time window and confirm the client is authenticating against `DC01` rather than a cached session. If commands return access denied, rerun them from an elevated administrative shell using a domain admin lab account.
+The goal is to identify the failing layer before remediation changes are applied.
 
-## Useful Commands
+---
+
+# Why It Matters
+
+---
+
+File share access problems can originate from multiple infrastructure components. Changing permissions before identifying the actual cause can create security exposure and operational inconsistency.
+
+A structured diagnostic process ensures:
+
+- Accurate root cause identification
+- Proper evidence collection
+- Reduced troubleshooting time
+- Safer remediation actions
+- Cleaner incident documentation
+
+---
+
+# Prerequisites
+
+---
+
+Before beginning diagnostics, confirm:
+
+- Administrative access is available
+- `CLIENT01` can communicate with `DC01`
+- Event Viewer access is available
+- PowerShell is launched as Administrator
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the incident ticket and confirm:
+   - Username
+   - Source workstation
+   - Failure time
+   - Shared folder path
+
+2. On `CLIENT01`, open Command Prompt and verify DNS configuration:
 
 ```powershell
-Get-ADUser -Identity mlopez -Properties Enabled,LockedOut,PasswordExpired,LastLogonDate
-Search-ADAccount -LockedOut
-gpresult /r
+ipconfig /all
+```
+
+3. Confirm the client can locate a domain controller:
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+4. On `FS01`, review the affected folder permissions:
+   - Share permissions
+   - NTFS permissions
+   - Group assignments
+
+5. On `DC01`, open Event Viewer and review Security logs for:
+   - Event ID `4663`
+   - Failed authentication events
+   - Account lockout activity
+
+6. Compare event timestamps with the reported incident time.
+
+7. Document all findings before changing permissions or policies.
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate DNS Configuration
+
+```powershell
+ipconfig /all
+```
+
+---
+
+## Validate Domain Controller Discovery
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+---
+
+## Validate Secure Channel
+
+```powershell
 nltest /sc_verify:lab.local
 ```
 
-The output from these commands should be pasted into the ticket summary or saved as a transcript. Avoid relying on memory during incident response; the final post-incident review depends on exact evidence.
+---
 
-## Operational Quality Notes
+## Review NTFS Permissions
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+```powershell
+icacls D:\Shares\Finance
+```
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-03-file-share-access-denied-diagnosis-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+---
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+## Validate User Account Status
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+```powershell
+Get-ADUser -Identity mlopez -Properties Enabled,LockedOut,PasswordExpired,LastLogonDate
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+# Verification
+
+---
+
+The investigation should identify a confirmed cause such as:
+
+- Incorrect NTFS permission
+- Incorrect share permission
+- Missing security group membership
+- DNS configuration issue
+- Account lockout
+- Authentication failure
+
+Validation checklist:
+
+| Validation Item | Expected Result |
+|---|---|
+| DNS Resolution | Successful |
+| Domain Controller Discovery | Successful |
+| Secure Channel | Verified |
+| Account Status | Enabled |
+| NTFS Permissions | Correct |
+| Event Logs | Matching timestamps found |
+
+After remediation, validate file access from `CLIENT01` using a standard domain user account.
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Access denied | NTFS restriction | Correct folder permissions |
+| `nltest` failure | DNS issue | Configure DNS to `192.168.100.10` |
+| No security logs | Auditing disabled | Enable object access auditing |
+| User authentication failure | Locked account | Unlock account and retest |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` enterprise lab environment using Windows Server 2022 systems.
+
+During troubleshooting:
+
+- Record exact commands
+- Record exact timestamps
+- Capture evidence before remediation
+- Test using a standard user account after changes
+
+Avoid making permission changes before identifying the actual failing component.
+
+Reference:
+
+```text
+../../ticketing-system/README.md
+```
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| Security log and permission validation | `incident-03-file-share-access-denied-diagnosis.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 03 File Share Access Denied Diagnosis](../screenshots/incident-03-file-share-access-denied-diagnosis.png)
