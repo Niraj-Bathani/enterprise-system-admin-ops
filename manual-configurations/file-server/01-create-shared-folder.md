@@ -2,71 +2,275 @@
 
 ## Objective
 
-Create a Windows shared folder for department data.
+Create a shared folder for department file storage in the `lab.local` environment.
 
-## Why It Matters
+---
 
-Shared folders provide central storage, backup coverage, and access control for business files. In a real enterprise, this procedure is more than a one-time setup action. It becomes part of the identity, name-resolution, access-control, and audit foundation that help support analysts solve tickets quickly and help administrators make changes without guessing. The lab values in this repository use `lab.local`, `DC01`, `CLIENT01`, and the `192.168.100.0/24` network so that each command can be practiced safely before the same pattern is adapted to a production naming standard.
+# Why It Matters
 
-## Prerequisites
+Shared folders provide centralized file storage, controlled access, and simplified management for users and departments.
 
-Use a Windows Server 2022 machine with a static management IP, current updates, correct time synchronization, and a local administrator session. Confirm that the server can reach the NAT gateway for updates and that the host-only network is stable for client testing. Run PowerShell as administrator. If the step touches Active Directory, sign in with an account that is a member of Domain Admins in the lab. Before making changes, record the existing state using commands such as `ipconfig /all`, `Get-WindowsFeature`, `Get-ADDomain`, `Get-GPO -All`, or `Get-SmbShare`, depending on the guide.
+This lab environment uses:
 
-## GUI Procedure
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| FS01 | File Server | 192.168.100.40 |
+| CLIENT01 | Windows Client | 192.168.100.20 |
 
-1. Create `D:\Shares\Sales` on `FS01`.
-2. Right-click folder, Properties, Sharing, Advanced Sharing.
-3. Share as `Sales`.
-4. Set share permissions to a broad group such as `Authenticated Users` Change for lab, then rely on NTFS for real access.
-5. Set NTFS permissions for `GG_Sales_Users` Modify.
+Network:
 
-After each GUI action, pause long enough to confirm the wizard accepted the value you entered. Do not click through warnings without reading them. Many Windows administrative tools allow a change to be submitted even when a dependency is wrong, and the failure only appears later in Event Viewer or in client behavior.
+```text
+192.168.100.0/24
+```
 
-## PowerShell Procedure
+Domain:
 
-The PowerShell path is preferred for repeatability and documentation. Copy commands into an elevated console, adjust only the lab-specific values, and keep the transcript with the change record.
+```text
+lab.local
+```
+
+The shared folder created in this guide:
+
+```text
+D:\Shares\Sales
+```
+
+SMB Share Name:
+
+```text
+Sales
+```
+
+---
+
+# Prerequisites
+
+Before starting:
+
+- File Server role available
+- DNS functioning correctly
+- PowerShell running as Administrator
+- `FS01` reachable from `CLIENT01`
+
+Verify SMB service:
+
+```powershell
+Get-Service LanmanServer
+```
+
+Verify network connectivity:
+
+```powershell
+Test-NetConnection FS01 -Port 445
+```
+
+---
+
+# GUI Procedure
+
+1. On `FS01`, create the folder:
+
+```text
+D:\Shares\Sales
+```
+
+2. Right-click the folder:
+
+```text
+Properties
+→ Sharing
+→ Advanced Sharing
+```
+
+3. Enable:
+
+```text
+Share this folder
+```
+
+4. Configure:
+
+| Setting | Value |
+|---|---|
+| Share Name | Sales |
+| Share Permission | Authenticated Users - Change |
+
+5. Configure NTFS permissions:
+
+```text
+Properties
+→ Security
+```
+
+6. Add:
+
+```text
+GG_Sales_Users
+```
+
+7. Assign:
+
+```text
+Modify
+```
+
+---
+
+# PowerShell Procedure
+
+Start logging:
 
 ```powershell
 Start-Transcript -Path C:\Logs\create-shared-folder.txt -Append
 ```
 
+Create the folder:
+
 ```powershell
-New-Item -Path 'D:\Shares\Sales' -ItemType Directory -Force
+New-Item -Path "D:\Shares\Sales" -ItemType Directory -Force
 ```
+
+Create SMB share:
+
 ```powershell
-New-SmbShare -Name 'Sales' -Path 'D:\Shares\Sales' -ChangeAccess 'Authenticated Users'
+New-SmbShare -Name "Sales" -Path "D:\Shares\Sales" -ChangeAccess "Authenticated Users"
 ```
+
+Configure NTFS permissions:
+
+```powershell
+icacls "D:\Shares\Sales" /grant "lab\GG_Sales_Users:(M)"
+```
+
+Stop logging:
 
 ```powershell
 Stop-Transcript
 ```
 
-## Verification
+---
 
-Run the following checks from the server first, then repeat a client-side validation from `CLIENT01` where appropriate. Expected output should show the feature, policy, record, share, or account in the configured state. If the output is empty, stale, or different from the expected value, do not continue to the next guide until the reason is understood.
+# Verification
+
+## Verify SMB Share
+
+Run:
 
 ```powershell
 Get-SmbShare -Name Sales
 ```
-```powershell
-Get-Acl 'D:\Shares\Sales'
+
+Expected result:
+
+```text
+Sales
+D:\Shares\Sales
 ```
 
-For client-side checks, sign in as a normal lab user such as `lab\jsmith`, open a fresh command prompt, and run the matching command. For policy work, use `gpupdate /force` followed by `gpresult /r`. For DNS work, use `Resolve-DnsName`. For file access, test both browsing and creating a small test file in the approved folder.
+---
 
-## Common Issues And Fixes
+## Verify Share Permissions
 
-- **Share not reachable:** Test SMB with `Test-NetConnection FS01 -Port 445`.
-- **Access denied:** Check both share and NTFS permissions, then test with a standard user.
+Run:
 
-- **Replication delay:** If the lab has more than one domain controller, use `repadmin /replsummary` and `repadmin /syncall /AdeP` before concluding that a setting failed.
-- **Permissions mismatch:** When a command works for an administrator but not for a user, check group membership, logoff/logon state, and whether the computer has refreshed its Kerberos ticket.
-- **Name resolution failure:** Confirm that `CLIENT01` uses `192.168.100.10` as DNS and that the record exists in the expected zone.
+```powershell
+Get-SmbShareAccess -Name Sales
+```
 
-## Screenshot Capture
+Expected result:
 
-![Shared folder permissions](./screenshots/shared-folder-permissions.png)
+```text
+Authenticated Users    Change
+```
 
-Capture note: add the real screenshot after lab execution. The image should show the completed wizard page, console state, or verification command output clearly enough that another administrator can audit the result.
+---
 
+## Verify NTFS Permissions
 
+Run:
+
+```powershell
+Get-Acl "D:\Shares\Sales"
+```
+
+Confirm:
+- `GG_Sales_Users`
+- Modify permissions assigned
+
+---
+
+## Verify Client Access
+
+On `CLIENT01`, open:
+
+```text
+\\FS01\Sales
+```
+
+Or run:
+
+```powershell
+Test-Path "\\FS01\Sales"
+```
+
+Create a test file inside the share to confirm write access.
+
+---
+
+# Common Issues And Fixes
+
+## Share Not Reachable
+
+Verify SMB connectivity:
+
+```powershell
+Test-NetConnection FS01 -Port 445
+```
+
+Verify File and Printer Sharing is enabled.
+
+---
+
+## Access Denied
+
+Verify:
+- Share permissions
+- NTFS permissions
+- Group membership
+
+Refresh user logon session if permissions were recently changed.
+
+---
+
+## SMB Share Missing
+
+List shares:
+
+```powershell
+Get-SmbShare
+```
+
+Recreate the share if necessary.
+
+---
+
+## Name Resolution Failure
+
+Verify DNS resolution:
+
+```powershell
+Resolve-DnsName FS01
+```
+
+Confirm client DNS server:
+
+```text
+192.168.100.10
+```
+
+---
+
+# Screenshot Capture
+
+![Shared folder permissions](../../screenshots/shared-folder-permissions.png)
