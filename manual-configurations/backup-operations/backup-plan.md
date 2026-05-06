@@ -66,8 +66,6 @@ C:\Scripts
 C:\Logs
 ````
 
-Avoid storing backups on the same disk being protected.
-
 ---
 
 ## Configuration Backups
@@ -103,20 +101,11 @@ Export-DhcpServer -File C:\Backups\dhcp.xml -Leases
 
 # Backup Storage Design
 
-Use a dedicated backup target such as:
-
 * External disk
 * Secondary virtual disk
 * NAS share
 * Separate datastore
 
-Do NOT store backups only on the source server.
-
-Example:
-
-```text
-E:\Backups
-```
 
 Production environments should use:
 
@@ -249,44 +238,4 @@ vssadmin list writers
 
 ![Backup verification](/screenshots/backup-verify.png)
 
-Capture the following evidence:
 
-* Windows Server Backup success message
-* `wbadmin get versions` output
-* Restore validation proof
-* Backup destination contents
-
-Recommended filename:
-
-```text
-backup-verify.png
-```
-
----
-
-# Operational Quality Notes
-
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named systems such as `DC01`, `FS01`, and `CLIENT01`.
-
-In production:
-
-* Schedule backups during maintenance windows
-* Assign ownership for restore testing
-* Document retention requirements
-* Encrypt backup storage
-* Protect backup credentials
-* Monitor backup job failures automatically
-
-Backups should support:
-
-* Recovery Point Objective (RPO)
-* Recovery Time Objective (RTO)
-* Compliance requirements
-* Incident response
-* Disaster recovery planning
-
-The most important operational rule is:
-
-> A backup that has never been restored is only a theory.
-
-Always validate recovery procedures regularly.
