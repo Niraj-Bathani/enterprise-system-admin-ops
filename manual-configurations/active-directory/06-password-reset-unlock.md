@@ -69,6 +69,3 @@ For client-side checks, sign in as a normal lab user such as `lab\jsmith`, open 
 
 ![Password reset unlock](/screenshots/password-reset-unlock.png)
 
-Capture note: add the real screenshot after lab execution. The image should show the completed wizard page, console state, or verification command output clearly enough that another administrator can audit the result.
-
-
