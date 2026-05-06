@@ -2,77 +2,240 @@
 
 ## Objective
 
-Create a DHCP scope for lab clients and reserve an address for `CLIENT01`.
+Create a DHCP scope for lab clients and configure a reservation for `CLIENT01`.
 
-## Why It Matters
+---
 
-Scopes define the usable address pool, options, and reservations that keep critical clients predictable. In a real enterprise, this procedure is more than a one-time setup action. It becomes part of the identity, name-resolution, access-control, and audit foundation that help support analysts solve tickets quickly and help administrators make changes without guessing. The lab values in this repository use `lab.local`, `DC01`, `CLIENT01`, and the `192.168.100.0/24` network so that each command can be practiced safely before the same pattern is adapted to a production naming standard.
+# Why It Matters
 
-## Prerequisites
+DHCP scopes define the IP address range available to client systems and ensure devices receive consistent network configuration automatically.
 
-Use a Windows Server 2022 machine with a static management IP, current updates, correct time synchronization, and a local administrator session. Confirm that the server can reach the NAT gateway for updates and that the host-only network is stable for client testing. Run PowerShell as administrator. If the step touches Active Directory, sign in with an account that is a member of Domain Admins in the lab. Before making changes, record the existing state using commands such as `ipconfig /all`, `Get-WindowsFeature`, `Get-ADDomain`, `Get-GPO -All`, or `Get-SmbShare`, depending on the guide.
+This lab environment uses:
 
-## GUI Procedure
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller and DHCP Server | 192.168.100.10 |
+| CLIENT01 | Windows Client | DHCP Reservation |
+| FS01 | File Server | 192.168.100.40 |
 
-1. Open DHCP console.
-2. Right-click IPv4 and create new scope.
-3. Name it `Lab Clients`.
-4. Use range `192.168.100.100` to `192.168.100.200`.
-5. Set subnet mask `255.255.255.0`.
-6. Configure router option if NAT gateway is used.
-7. Set DNS option to `192.168.100.10` and domain `lab.local`.
-8. Add a reservation for `CLIENT01` using its MAC address.
+Network:
 
-After each GUI action, pause long enough to confirm the wizard accepted the value you entered. Do not click through warnings without reading them. Many Windows administrative tools allow a change to be submitted even when a dependency is wrong, and the failure only appears later in Event Viewer or in client behavior.
+```text
+192.168.100.0/24
+```
 
-## PowerShell Procedure
+Domain:
 
-The PowerShell path is preferred for repeatability and documentation. Copy commands into an elevated console, adjust only the lab-specific values, and keep the transcript with the change record.
+```text
+lab.local
+```
+
+---
+
+# Prerequisites
+
+Before starting:
+
+- DHCP role installed
+- DHCP server authorized
+- DNS functioning correctly
+- PowerShell running as Administrator
+
+Verify DHCP service:
+
+```powershell
+Get-Service DHCPServer
+```
+
+Verify authorized DHCP server:
+
+```powershell
+Get-DhcpServerInDC
+```
+
+---
+
+# GUI Procedure
+
+1. Open:
+
+```text
+Server Manager
+→ Tools
+→ DHCP
+```
+
+2. Expand:
+
+```text
+DC01.lab.local
+→ IPv4
+```
+
+3. Right-click:
+
+```text
+IPv4
+→ New Scope
+```
+
+4. Configure the scope:
+
+| Setting | Value |
+|---|---|
+| Scope Name | Lab Clients |
+| Start IP | 192.168.100.100 |
+| End IP | 192.168.100.200 |
+| Subnet Mask | 255.255.255.0 |
+
+5. Configure DHCP options:
+
+| Option | Value |
+|---|---|
+| Router | 192.168.100.1 |
+| DNS Server | 192.168.100.10 |
+| Domain Name | lab.local |
+
+6. Activate the scope.
+
+7. Create reservation:
+
+| Setting | Value |
+|---|---|
+| Reservation Name | CLIENT01 |
+| IP Address | 192.168.100.120 |
+| MAC Address | 00-11-22-33-44-55 |
+
+---
+
+# PowerShell Procedure
+
+Start logging:
 
 ```powershell
 Start-Transcript -Path C:\Logs\create-dhcp-scope-and-reservation.txt -Append
 ```
 
+Create DHCP scope:
+
 ```powershell
-Add-DhcpServerv4Scope -Name 'Lab Clients' -StartRange 192.168.100.100 -EndRange 192.168.100.200 -SubnetMask 255.255.255.0 -State Active
+Add-DhcpServerv4Scope -Name "Lab Clients" -StartRange 192.168.100.100 -EndRange 192.168.100.200 -SubnetMask 255.255.255.0 -State Active
 ```
+
+Configure DHCP options:
+
 ```powershell
-Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -DnsServer 192.168.100.10 -DnsDomain lab.local
+Set-DhcpServerv4OptionValue -ScopeId 192.168.100.0 -DnsServer 192.168.100.10 -DnsDomain "lab.local" -Router 192.168.100.1
 ```
+
+Create reservation:
+
 ```powershell
-Add-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress 192.168.100.120 -ClientId '00-11-22-33-44-55' -Description 'CLIENT01 reservation'
+Add-DhcpServerv4Reservation -ScopeId 192.168.100.0 -IPAddress 192.168.100.120 -ClientId "00-11-22-33-44-55" -Description "CLIENT01 reservation"
 ```
+
+Stop logging:
 
 ```powershell
 Stop-Transcript
 ```
 
-## Verification
+---
 
-Run the following checks from the server first, then repeat a client-side validation from `CLIENT01` where appropriate. Expected output should show the feature, policy, record, share, or account in the configured state. If the output is empty, stale, or different from the expected value, do not continue to the next guide until the reason is understood.
+# Verification
+
+## Verify DHCP Scope
+
+Run:
 
 ```powershell
 Get-DhcpServerv4Scope
 ```
-```powershell
-Get-DhcpServerv4Lease -ScopeId 192.168.100.0
+
+Expected result:
+
+```text
+Lab Clients
+192.168.100.100 - 192.168.100.200
+Active
 ```
 
-For client-side checks, sign in as a normal lab user such as `lab\jsmith`, open a fresh command prompt, and run the matching command. For policy work, use `gpupdate /force` followed by `gpresult /r`. For DNS work, use `Resolve-DnsName`. For file access, test both browsing and creating a small test file in the approved folder.
+---
 
-## Common Issues And Fixes
+## Verify Reservation
 
-- **Client keeps APIPA:** Run `ipconfig /release` and `ipconfig /renew`, then check DHCP service and network adapter mode.
-- **Reservation ignored:** Confirm the MAC address format and that no exclusion blocks the address.
+Run:
 
-- **Replication delay:** If the lab has more than one domain controller, use `repadmin /replsummary` and `repadmin /syncall /AdeP` before concluding that a setting failed.
-- **Permissions mismatch:** When a command works for an administrator but not for a user, check group membership, logoff/logon state, and whether the computer has refreshed its Kerberos ticket.
-- **Name resolution failure:** Confirm that `CLIENT01` uses `192.168.100.10` as DNS and that the record exists in the expected zone.
+```powershell
+Get-DhcpServerv4Reservation -ScopeId 192.168.100.0
+```
 
-## Screenshot Capture
+Expected result:
 
-![DHCP scope active](./screenshots/dhcp-scope-active.png)
+```text
+CLIENT01    192.168.100.120
+```
 
-Capture note: add the real screenshot after lab execution. The image should show the completed wizard page, console state, or verification command output clearly enough that another administrator can audit the result.
+---
 
+## Verify DHCP Lease
 
+On `CLIENT01`, run:
+
+```powershell
+ipconfig /release
+ipconfig /renew
+ipconfig /all
+```
+
+Confirm:
+- Client receives DHCP address
+- DNS server is `192.168.100.10`
+- Domain is `lab.local`
+
+---
+
+# Common Issues And Fixes
+
+## Client Receives APIPA Address
+
+Renew DHCP lease:
+
+```powershell
+ipconfig /release
+ipconfig /renew
+```
+
+Verify DHCP service:
+
+```powershell
+Get-Service DHCPServer
+```
+
+---
+
+## Reservation Not Applied
+
+Verify MAC address format:
+
+```text
+00-11-22-33-44-55
+```
+
+Confirm the reservation IP is not excluded from the scope.
+
+---
+
+## DHCP Scope Inactive
+
+Activate the scope:
+
+```powershell
+Set-DhcpServerv4Scope -ScopeId 192.168.100.0 -State Active
+```
+
+---
+
+# Screenshot Capture
+
+![DHCP scope active](/screenshots/dhcp-scope-active.png)
