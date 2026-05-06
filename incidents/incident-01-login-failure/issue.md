@@ -1,27 +1,160 @@
 # Incident 01 Login Failure - Issue Report
 
-## Incident Summary
+## Objective
 
-On 2026-04-25 09:00, John Smith from Sales reported that user `jsmith` could not log in after vacation. The priority was classified as P2 because the user or service was blocked from normal work but the wider business remained operational. The affected environment was `lab.local`, with primary investigation on `DC01` and client validation from `CLIENT01`. The visible error was: `The referenced account is currently locked out.`.
+Document and investigate a user login failure incident in the `lab.local` environment.
 
-## Business Impact
+---
 
-The immediate impact was loss of productivity for the affected user group and increased service desk volume. The symptom was simple from the user's perspective, but it touched identity, workstation state, policy refresh, and audit logging. The ticket was opened with enough detail to avoid repeated questions: username, computer name, last successful sign-in time, exact error text, network location, and whether the issue followed the user to another computer.
+# Incident Summary
 
-## Initial Triage
+| Item | Details |
+|---|---|
+| Incident ID | INC-0001 |
+| Reported User | John Smith |
+| Username | jsmith |
+| Department | Sales |
+| Priority | P2 |
+| Reported Time | 2026-04-25 09:00 |
+| Domain | lab.local |
+| Domain Controller | DC01 |
+| Client System | CLIENT01 |
+| Error Message | The referenced account is currently locked out |
 
-The service desk confirmed the user was on the corporate network, had not recently changed departments, and was using the expected domain sign-in format. The technician checked whether the problem occurred in a browser, in Windows sign-in, or only when accessing a specific network resource. That distinction matters because a Windows logon failure points toward AD, Kerberos, account state, workstation trust, or password status, while a file-share-only failure points toward group membership or ACLs.
+---
 
-## Evidence To Collect
+# Environment
 
-Record the ticket number, reporter, affected asset, error message, and timestamps. Capture screenshots only after reproducing the failure in the lab. Useful evidence includes Event Viewer entries, ADUC account properties, `gpresult /r`, `ipconfig /all`, `whoami /groups`, or `Resolve-DnsName lab.local`, depending on the symptom. Evidence should be attached to the ticket and referenced in the final resolution notes.
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| CLIENT01 | Windows Client | 192.168.100.20 |
 
-## Operational Quality Notes
+Domain:
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+```text
+lab.local
+```
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-01-login-failure-issue-report-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+---
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+# Initial Triage
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+The following checks were completed during the initial investigation:
+
+- confirmed user identity
+- confirmed workstation name
+- confirmed network connectivity
+- verified DNS configuration
+- reviewed account lockout status
+- verified domain controller reachability
+- checked Event Viewer security logs
+
+---
+
+# User Symptoms
+
+The affected user reported:
+- unable to sign in to Windows
+- login failure after returning from vacation
+- repeated credential prompt failures
+- domain authentication error displayed at sign-in
+
+Displayed error:
+
+```text
+The referenced account is currently locked out.
+```
+
+---
+
+# Diagnostic Commands
+
+Verify DNS configuration:
+
+```powershell
+ipconfig /all
+```
+
+Verify domain controller discovery:
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+Check account lockout state:
+
+```powershell
+Search-ADAccount -LockedOut
+```
+
+Verify Group Policy processing:
+
+```powershell
+gpresult /r
+```
+
+Verify secure channel:
+
+```powershell
+nltest /sc_verify:lab.local
+```
+
+---
+
+# Event Viewer Investigation
+
+Open:
+
+```text
+Event Viewer
+→ Windows Logs
+→ Security
+```
+
+Review the following Event IDs:
+- 4740
+- 4625
+- 4771
+
+Confirm:
+- source workstation
+- failed authentication attempts
+- account lockout activity
+- authentication timestamps
+
+---
+
+# Evidence Collection
+
+Collect and attach:
+- PowerShell output
+- Event Viewer screenshots
+- account properties screenshots
+- gpresult output
+- DNS verification results
+- login failure screenshots
+
+Store screenshots under:
+
+```text
+screenshots/
+```
+
+---
+
+# Validation
+
+Confirm:
+- CLIENT01 resolves lab.local correctly
+- DC01 reachable from client
+- account state verified successfully
+- issue reproduced before remediation
+- evidence attached to incident record
+
+---
+
+# Screenshot Capture
+
+![Incident login diagnosis](../screenshots/incident-01-login-diagnosis.png)
+
