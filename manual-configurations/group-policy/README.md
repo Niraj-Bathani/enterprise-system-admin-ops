@@ -2,31 +2,132 @@
 
 ## Purpose
 
-Group Policy is used to configure security, desktop behavior, and mapped resources consistently across Windows clients. This section is designed as a practical runbook set, not a theory-only reference. Each guide starts with the business reason, walks through both GUI and PowerShell approaches when appropriate, and finishes with verification and troubleshooting. The examples assume `lab.local`, `DC01` at `192.168.100.10`, `CLIENT01` at `192.168.100.20`, and an Ubuntu host at `192.168.100.30` where cross-platform validation is needed.
+This section covers practical Group Policy administration in the `lab.local` environment using Windows Server 2022 and domain-joined Windows clients.
+
+The procedures focus on:
+
+- password and lockout policy management
+- USB storage restrictions
+- mapped drive deployment
+- Group Policy troubleshooting
+- policy validation and verification
+
+Lab systems used throughout this section:
+
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| CLIENT01 | Windows Client | 192.168.100.20 |
+| UBUNTU01 | Ubuntu Test Host | 192.168.100.30 |
+
+Domain:
+
+```text
+lab.local
+```
+
+---
 
 ## Recommended Order
 
-- [01-password-policy.md](01-password-policy.md) - Configure password and lockout settings.
-- [02-usb-restriction.md](02-usb-restriction.md) - Restrict removable storage for managed clients.
-- [03-mapped-drive.md](03-mapped-drive.md) - Deploy a mapped department drive.
-- [04-gpupdate-troubleshooting.md](04-gpupdate-troubleshooting.md) - Troubleshoot policy refresh and application.
+1. [01-password-policy.md](01-password-policy.md)  
+   Configure domain password and account lockout policies.
 
-Follow the numbered documents in order unless you are responding to a specific incident. The order matters because later procedures often rely on earlier ones. For example, a mapped drive GPO is easier to validate after the file server permissions are known-good, and DHCP troubleshooting is easier after DNS has already been verified. When a guide references another folder, use the relative links rather than searching manually; this mirrors the way production runbooks should direct technicians to the next trusted source of information.
+2. [02-usb-restriction.md](02-usb-restriction.md)  
+   Restrict removable USB storage devices on managed clients.
+
+3. [03-mapped-drive.md](03-mapped-drive.md)  
+   Deploy department mapped drives using Group Policy.
+
+4. [04-gpupdate-troubleshooting.md](04-gpupdate-troubleshooting.md)  
+   Diagnose and resolve Group Policy processing issues.
+
+---
 
 ## Operating Standard
 
-Treat every GPO as code-like configuration. Name it clearly, link it narrowly, test it in a pilot OU, and collect gpresult evidence before broad rollout.
+When working with Group Policy:
 
-Before changing a domain, policy, DNS zone, DHCP scope, share, backup job, or patch state, record the current value and the reason for the change. Use PowerShell transcripts for commands and capture screenshots for GUI actions. Save evidence with a consistent name under the local `screenshots` directory, then update the markdown image tag after the lab execution. Do not use mock screenshots; the point of this repository is to show real operational work.
+- use clear naming standards
+- link GPOs only where required
+- test changes in a pilot OU first
+- verify policy application using `gpresult`
+- collect screenshots and logs after validation
+- document all policy changes
+
+Store screenshots inside:
+
+```text
+/screenshots/
+```
+
+Use consistent filenames matching the procedure being validated.
+
+---
 
 ## Validation Pattern
 
-Every guide follows the same validation pattern. First, verify the server-side configuration with an administrative tool. Second, test from a client computer using a standard account. Third, review the relevant event log if the behavior does not match the expected state. Fourth, document the result in the ticket or change record. This pattern keeps troubleshooting disciplined and reduces the chance that a change is declared complete simply because it looked correct on the server.
+Each procedure follows the same validation workflow:
+
+1. Configure the policy.
+2. Force Group Policy update.
+3. Verify policy application.
+4. Test the expected client behavior.
+5. Review logs and reports if issues occur.
+
+Common validation commands:
+
+```powershell
+gpupdate /force
+```
+
+```powershell
+gpresult /r
+```
+
+```powershell
+gpresult /h C:\Logs\gpresult.html
+```
+
+---
 
 ## Troubleshooting Mindset
 
-When something fails, avoid changing several settings at once. Check identity, network, name resolution, time, permissions, policy scope, and service state in that order. A locked account, stale DNS cache, missing OU link, stopped service, or inherited deny permission can create symptoms that look much larger than the actual root cause. Keep the exact error message in the notes because Windows administrative errors are often searchable and event IDs provide strong clues.
+When troubleshooting Group Policy:
+
+- verify DNS first
+- confirm OU placement
+- confirm security filtering
+- verify domain connectivity
+- check replication health
+- review Event Viewer logs
+- verify SYSVOL access
+
+Useful validation commands:
+
+```powershell
+Resolve-DnsName lab.local
+```
+
+```powershell
+repadmin /replsummary
+```
+
+```powershell
+Test-ComputerSecureChannel -Verbose
+```
+
+---
 
 ## Production Notes
 
-In production, add peer review and change approval before applying these steps. Test policy and script changes against a pilot OU, schedule disruptive work outside business hours, and confirm rollback instructions. For shared services such as DNS, DHCP, file services, and domain controllers, notify the service desk before work begins so incoming calls can be correlated with the change window. The lab is intentionally small, but the habits practiced here scale to larger environments.
+In production environments:
+
+- use change approval processes
+- test policies in pilot groups
+- schedule deployments during maintenance windows
+- maintain rollback procedures
+- document all policy modifications
+- notify support teams before rollout
+
+The lab environment is intentionally simplified, but the same operational workflow applies to enterprise deployments.
