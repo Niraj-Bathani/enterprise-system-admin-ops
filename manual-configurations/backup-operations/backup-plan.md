@@ -290,6 +290,3 @@ The most important operational rule is:
 > A backup that has never been restored is only a theory.
 
 Always validate recovery procedures regularly.
-
-```
-```
