@@ -2,71 +2,214 @@
 
 ## Objective
 
-Install and authorize DHCP on `DC01`.
+Install and authorize the DHCP Server role on `DC01`.
 
-## Why It Matters
+---
 
-DHCP assigns client IP configuration consistently and reduces manual workstation errors. In a real enterprise, this procedure is more than a one-time setup action. It becomes part of the identity, name-resolution, access-control, and audit foundation that help support analysts solve tickets quickly and help administrators make changes without guessing. The lab values in this repository use `lab.local`, `DC01`, `CLIENT01`, and the `192.168.100.0/24` network so that each command can be practiced safely before the same pattern is adapted to a production naming standard.
+# Why It Matters
 
-## Prerequisites
+DHCP automatically assigns IP configuration to client systems and helps maintain consistent network settings across the environment.
 
-Use a Windows Server 2022 machine with a static management IP, current updates, correct time synchronization, and a local administrator session. Confirm that the server can reach the NAT gateway for updates and that the host-only network is stable for client testing. Run PowerShell as administrator. If the step touches Active Directory, sign in with an account that is a member of Domain Admins in the lab. Before making changes, record the existing state using commands such as `ipconfig /all`, `Get-WindowsFeature`, `Get-ADDomain`, `Get-GPO -All`, or `Get-SmbShare`, depending on the guide.
+This lab environment uses:
 
-## GUI Procedure
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller and DHCP Server | 192.168.100.10 |
+| CLIENT01 | Windows Client | DHCP |
+| FS01 | File Server | 192.168.100.40 |
 
-1. Open Server Manager.
-2. Add the DHCP Server role.
-3. Complete installation.
-4. Run post-install configuration.
-5. Authorize DHCP in Active Directory.
+Network:
 
-After each GUI action, pause long enough to confirm the wizard accepted the value you entered. Do not click through warnings without reading them. Many Windows administrative tools allow a change to be submitted even when a dependency is wrong, and the failure only appears later in Event Viewer or in client behavior.
+```text
+192.168.100.0/24
+```
 
-## PowerShell Procedure
+Domain:
 
-The PowerShell path is preferred for repeatability and documentation. Copy commands into an elevated console, adjust only the lab-specific values, and keep the transcript with the change record.
+```text
+lab.local
+```
+
+---
+
+# Prerequisites
+
+Before starting:
+
+- Static IP configured on `DC01`
+- DNS role installed
+- Domain Controller operational
+- PowerShell running as Administrator
+
+Verify current server configuration:
+
+```powershell
+ipconfig /all
+```
+
+Verify installed roles:
+
+```powershell
+Get-WindowsFeature DHCP
+```
+
+---
+
+# GUI Procedure
+
+1. Open:
+
+```text
+Server Manager
+```
+
+2. Select:
+
+```text
+Manage
+→ Add Roles and Features
+```
+
+3. Choose:
+
+```text
+DHCP Server
+```
+
+4. Install required management tools.
+
+5. Complete installation.
+
+6. After installation, select:
+
+```text
+Complete DHCP configuration
+```
+
+7. Authorize the DHCP server in Active Directory.
+
+---
+
+# PowerShell Procedure
+
+Start logging:
 
 ```powershell
 Start-Transcript -Path C:\Logs\install-dhcp-role.txt -Append
 ```
 
+Install DHCP role:
+
 ```powershell
 Install-WindowsFeature -Name DHCP -IncludeManagementTools
 ```
+
+Authorize DHCP server:
+
 ```powershell
-Add-DhcpServerInDC -DnsName 'dc01.lab.local' -IPAddress 192.168.100.10
+Add-DhcpServerInDC -DnsName "dc01.lab.local" -IPAddress 192.168.100.10
 ```
+
+Stop logging:
 
 ```powershell
 Stop-Transcript
 ```
 
-## Verification
+---
 
-Run the following checks from the server first, then repeat a client-side validation from `CLIENT01` where appropriate. Expected output should show the feature, policy, record, share, or account in the configured state. If the output is empty, stale, or different from the expected value, do not continue to the next guide until the reason is understood.
+# Verification
 
-```powershell
-Get-DhcpServerInDC
-```
+## Verify DHCP Service
+
+Run:
+
 ```powershell
 Get-Service DHCPServer
 ```
 
-For client-side checks, sign in as a normal lab user such as `lab\jsmith`, open a fresh command prompt, and run the matching command. For policy work, use `gpupdate /force` followed by `gpresult /r`. For DNS work, use `Resolve-DnsName`. For file access, test both browsing and creating a small test file in the approved folder.
+Expected result:
 
-## Common Issues And Fixes
+```text
+Status : Running
+```
 
-- **DHCP unauthorized:** Run `Add-DhcpServerInDC` from an elevated domain admin shell.
-- **Service not started:** Start `DHCPServer` and review the Microsoft-Windows-DHCP Server event log.
+---
 
-- **Replication delay:** If the lab has more than one domain controller, use `repadmin /replsummary` and `repadmin /syncall /AdeP` before concluding that a setting failed.
-- **Permissions mismatch:** When a command works for an administrator but not for a user, check group membership, logoff/logon state, and whether the computer has refreshed its Kerberos ticket.
-- **Name resolution failure:** Confirm that `CLIENT01` uses `192.168.100.10` as DNS and that the record exists in the expected zone.
+## Verify DHCP Authorization
 
-## Screenshot Capture
+Run:
 
-![DHCP installed](./screenshots/dhcp-installed.png)
+```powershell
+Get-DhcpServerInDC
+```
 
-Capture note: add the real screenshot after lab execution. The image should show the completed wizard page, console state, or verification command output clearly enough that another administrator can audit the result.
+Expected result:
 
+```text
+dc01.lab.local    192.168.100.10
+```
 
+---
+
+## Verify DHCP Management Console
+
+Open:
+
+```text
+Server Manager
+→ Tools
+→ DHCP
+```
+
+Confirm:
+
+- `DC01` appears
+- IPv4 section is visible
+- No authorization errors exist
+
+---
+
+# Common Issues And Fixes
+
+## DHCP Server Not Authorized
+
+Authorize the server:
+
+```powershell
+Add-DhcpServerInDC -DnsName "dc01.lab.local" -IPAddress 192.168.100.10
+```
+
+---
+
+## DHCP Service Not Running
+
+Start the service:
+
+```powershell
+Start-Service DHCPServer
+```
+
+Check service status again:
+
+```powershell
+Get-Service DHCPServer
+```
+
+---
+
+## DHCP Console Cannot Connect
+
+Verify the server is domain joined and DNS is functioning correctly.
+
+Test DNS resolution:
+
+```powershell
+Resolve-DnsName dc01.lab.local
+```
+
+---
+
+# Screenshot Capture
+
+![DHCP installed](/screenshots/dhcp-installed.png)
