@@ -251,7 +251,6 @@ Force replication if necessary:
 repadmin /syncall /AdeP
 ```
 
----
 
 # Screenshot Capture
 
