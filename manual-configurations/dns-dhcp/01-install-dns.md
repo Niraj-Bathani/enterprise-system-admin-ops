@@ -220,15 +220,4 @@ Resolve-DnsName lab.local
 
 ![DNS installed](/screenshots/dns-zones.png)
 
-Capture the following after installation:
-
-- DNS Manager console
-- DNS service running
-- `Get-Service DNS` output
-- `Resolve-DnsName lab.local` output
-
-Recommended filename:
-
-```text
-dns-installed.png
 ```
