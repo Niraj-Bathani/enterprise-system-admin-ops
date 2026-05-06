@@ -212,4 +212,4 @@ Resolve-DnsName dc01.lab.local
 
 # Screenshot Capture
 
-![DHCP installed](/screenshots/dhcp-installed.png)
+![DHCP installed](/screenshots/dhcp-scope-active.png)
