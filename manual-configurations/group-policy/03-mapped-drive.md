@@ -127,8 +127,7 @@ Expected result:
 
 ## Screenshot Capture
 
-```markdown
-![Mapped drive policy](./screenshots/mapped-drive-policy.png)
+![Mapped drive policy](/screenshots/mapped-drive-policy.png)
 
 
 
