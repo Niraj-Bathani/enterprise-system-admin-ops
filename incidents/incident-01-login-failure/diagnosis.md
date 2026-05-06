@@ -215,5 +215,5 @@ Verify:
 
 # Screenshot Capture
 
-![Incident login diagnosis](./screenshots/incident-01-login-diagnosis.png)
+![Incident login diagnosis](../screenshots/incident-01-login-diagnosis.png)
 
