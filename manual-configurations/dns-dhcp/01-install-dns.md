@@ -2,68 +2,233 @@
 
 ## Objective
 
-Install the DNS Server role on `DC01` and validate service operation.
+Install the DNS Server role on `DC01` and verify that the DNS service is operational.
 
-## Why It Matters
+---
 
-DNS is required for Active Directory domain location, Kerberos, LDAP, and almost every Windows domain function. In a real enterprise, this procedure is more than a one-time setup action. It becomes part of the identity, name-resolution, access-control, and audit foundation that help support analysts solve tickets quickly and help administrators make changes without guessing. The lab values in this repository use `lab.local`, `DC01`, `CLIENT01`, and the `192.168.100.0/24` network so that each command can be practiced safely before the same pattern is adapted to a production naming standard.
+# Why It Matters
 
-## Prerequisites
+DNS is required for Active Directory authentication, domain controller discovery, Kerberos, LDAP, Group Policy processing, and general name resolution inside the domain environment.
 
-Use a Windows Server 2022 machine with a static management IP, current updates, correct time synchronization, and a local administrator session. Confirm that the server can reach the NAT gateway for updates and that the host-only network is stable for client testing. Run PowerShell as administrator. If the step touches Active Directory, sign in with an account that is a member of Domain Admins in the lab. Before making changes, record the existing state using commands such as `ipconfig /all`, `Get-WindowsFeature`, `Get-ADDomain`, `Get-GPO -All`, or `Get-SmbShare`, depending on the guide.
+This lab uses:
 
-## GUI Procedure
+| System | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller and DNS Server | 192.168.100.10 |
+| CLIENT01 | Domain Client | 192.168.100.20 |
 
-1. Open Server Manager.
-2. Add roles and features.
-3. Select DNS Server.
-4. Accept management tools and install.
-5. Open DNS Manager after installation.
+Domain name:
 
-After each GUI action, pause long enough to confirm the wizard accepted the value you entered. Do not click through warnings without reading them. Many Windows administrative tools allow a change to be submitted even when a dependency is wrong, and the failure only appears later in Event Viewer or in client behavior.
+```text
+lab.local
+```
 
-## PowerShell Procedure
+---
 
-The PowerShell path is preferred for repeatability and documentation. Copy commands into an elevated console, adjust only the lab-specific values, and keep the transcript with the change record.
+# Prerequisites
+
+Before starting:
+
+- Windows Server 2022 is installed
+- Static IP address is configured
+- Server time is synchronized
+- Administrator PowerShell session is open
+- The server can communicate with the lab network
+
+Verify network configuration:
+
+```powershell
+ipconfig /all
+```
+
+Verify current installed roles:
+
+```powershell
+Get-WindowsFeature
+```
+
+---
+
+# GUI Installation Procedure
+
+1. Open:
+
+```text
+Server Manager
+```
+
+2. Select:
+
+```text
+Manage
+→ Add Roles and Features
+```
+
+3. Choose:
+
+```text
+Role-based or feature-based installation
+```
+
+4. Select server:
+
+```text
+DC01
+```
+
+5. Enable:
+
+```text
+DNS Server
+```
+
+6. Accept required management tools.
+
+7. Complete the installation wizard.
+
+8. Open:
+
+```text
+Tools
+→ DNS
+```
+
+---
+
+# PowerShell Installation Procedure
+
+Start logging:
 
 ```powershell
 Start-Transcript -Path C:\Logs\install-dns-role.txt -Append
 ```
 
+Install DNS Server role:
+
 ```powershell
 Install-WindowsFeature -Name DNS -IncludeManagementTools
 ```
+
+Stop logging:
 
 ```powershell
 Stop-Transcript
 ```
 
-## Verification
+---
 
-Run the following checks from the server first, then repeat a client-side validation from `CLIENT01` where appropriate. Expected output should show the feature, policy, record, share, or account in the configured state. If the output is empty, stale, or different from the expected value, do not continue to the next guide until the reason is understood.
+# Verification
+
+## Verify DNS Service
+
+Run:
 
 ```powershell
 Get-Service DNS
 ```
+
+Expected result:
+
+```text
+Status : Running
+```
+
+---
+
+## Verify DNS Zones
+
+Run:
+
 ```powershell
 Get-DnsServerZone
 ```
 
-For client-side checks, sign in as a normal lab user such as `lab\jsmith`, open a fresh command prompt, and run the matching command. For policy work, use `gpupdate /force` followed by `gpresult /r`. For DNS work, use `Resolve-DnsName`. For file access, test both browsing and creating a small test file in the approved folder.
+Confirm that the following zone exists:
 
-## Common Issues And Fixes
+```text
+lab.local
+```
 
-- **DNS service stopped:** Start it with `Start-Service DNS` and review the DNS Server event log.
-- **Client uses wrong DNS:** Set the client adapter DNS server to `192.168.100.10`.
+---
 
-- **Replication delay:** If the lab has more than one domain controller, use `repadmin /replsummary` and `repadmin /syncall /AdeP` before concluding that a setting failed.
-- **Permissions mismatch:** When a command works for an administrator but not for a user, check group membership, logoff/logon state, and whether the computer has refreshed its Kerberos ticket.
-- **Name resolution failure:** Confirm that `CLIENT01` uses `192.168.100.10` as DNS and that the record exists in the expected zone.
+## Client Validation
 
-## Screenshot Capture
+On `CLIENT01`, run:
 
-![DNS installed](./screenshots/dns-installed.png)
+```powershell
+Resolve-DnsName lab.local
+```
 
-Capture note: add the real screenshot after lab execution. The image should show the completed wizard page, console state, or verification command output clearly enough that another administrator can audit the result.
+Expected result:
 
+- DNS resolution succeeds
+- DNS server returned is `192.168.100.10`
 
+---
+
+# Common Issues And Fixes
+
+## DNS Service Not Running
+
+Start the DNS service:
+
+```powershell
+Start-Service DNS
+```
+
+Verify service state:
+
+```powershell
+Get-Service DNS
+```
+
+---
+
+## Incorrect Client DNS Configuration
+
+Verify client DNS settings:
+
+```powershell
+ipconfig /all
+```
+
+Confirm preferred DNS server is:
+
+```text
+192.168.100.10
+```
+
+---
+
+## DNS Resolution Failure
+
+Flush DNS cache:
+
+```powershell
+ipconfig /flushdns
+```
+
+Retest:
+
+```powershell
+Resolve-DnsName lab.local
+```
+
+---
+
+# Screenshot Capture
+
+![DNS installed](/screenshots/dns-zones.png)
+
+Capture the following after installation:
+
+- DNS Manager console
+- DNS service running
+- `Get-Service DNS` output
+- `Resolve-DnsName lab.local` output
+
+Recommended filename:
+
+```text
+dns-installed.png
+```
