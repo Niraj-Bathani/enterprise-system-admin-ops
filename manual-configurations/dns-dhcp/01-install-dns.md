@@ -220,4 +220,3 @@ Resolve-DnsName lab.local
 
 ![DNS installed](/screenshots/dns-zones.png)
 
-```
