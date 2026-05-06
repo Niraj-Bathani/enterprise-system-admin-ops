@@ -2,30 +2,209 @@
 
 ## Objective
 
-Perform a controlled restore test to prove backups are usable. Restore testing is the difference between hoping and knowing. The lab restore should recover a sample file and document the time, source backup, target location, and validation result.
+The purpose of this procedure is to validate that backups can be restored successfully. A backup is not considered operationally valid until a restore test has been completed and verified.
 
-## Preparation
+This restore test is performed in the `lab.local` environment using:
 
-Create a test file in `D:\Shares\Sales\restore-test.txt` with known content. Run the backup job. Delete or rename the file only after confirming the backup version exists. Choose a restore target that does not overwrite production-like data unless the test specifically requires original-location restore.
+| Server | Role | IP Address |
+|---|---|---|
+| DC01 | Domain Controller | 192.168.100.10 |
+| FS01 | File Server | 192.168.100.20 |
+| CLIENT01 | Validation Workstation | 192.168.100.30 |
 
-## Restore Steps
+---
 
-Using Windows Server Backup, open the console, choose Recover, select the backup location, choose the backup date, select Files and folders, choose the sample file, and restore to an alternate path such as `D:\RestoreTest`. With command-line tools, document the exact command and output. After restore, compare the file content using `Get-Content` and file hash using `Get-FileHash`.
+# Restore Test Preparation
 
-## Validation
+## 1. Create Test File
 
-The restore passes when the file exists, contents match, permissions are understood, and the restore time is recorded. Capture `![Restore test](./screenshots/restore-test.png)` after the lab run. Include the screenshot in the change or operations record.
+Create the following test file:
 
-## Lessons For Production
+```text
+D:\Shares\Sales\restore-test.txt
+```
 
-Production restore tests should include file-level, system-state, and application-aware scenarios where relevant. Test to alternate location first unless the business explicitly approves overwriting live data. Record recovery time objective and actual restore duration so planning is based on evidence.
+Add sample content to the file:
 
-## Operational Quality Notes
+```text
+Restore validation test file
+```
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+---
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `restore-test-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+## 2. Run Backup Job
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Run the scheduled backup job or manual backup operation.
 
-After completing the procedure, compare the outcome with [backup-plan.md](backup-plan.md), [daily-checklist.md](daily-checklist.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+Verify backup completion:
+
+```powershell
+wbadmin get versions
+```
+
+Confirm that a recent backup version exists before continuing.
+
+---
+
+## 3. Remove Original File
+
+Delete or rename the original file after backup validation.
+
+Example:
+
+```powershell
+Rename-Item 'D:\Shares\Sales\restore-test.txt' 'restore-test-old.txt'
+```
+
+---
+
+# Restore Procedure
+
+## Restore Using Windows Server Backup
+
+Open:
+
+```text
+Server Manager
+→ Tools
+→ Windows Server Backup
+```
+
+Select:
+
+```text
+Recover
+```
+
+Complete the following steps:
+
+1. Select backup location
+2. Select backup date
+3. Choose:
+   - Files and folders
+4. Select:
+   - restore-test.txt
+5. Restore to:
+
+```text
+D:\RestoreTest
+```
+
+---
+
+# Restore Validation
+
+## 1. Verify Restored File Exists
+
+Run:
+
+```powershell
+Get-ChildItem D:\RestoreTest
+```
+
+Confirm:
+
+- restore-test.txt exists
+- restore completed successfully
+
+---
+
+## 2. Verify File Contents
+
+Run:
+
+```powershell
+Get-Content D:\RestoreTest\restore-test.txt
+```
+
+Expected output:
+
+```text
+Restore validation test file
+```
+
+---
+
+## 3. Verify File Hash
+
+Run:
+
+```powershell
+Get-FileHash D:\RestoreTest\restore-test.txt
+```
+
+Confirm the restored file hash matches the original file hash recorded before deletion.
+
+---
+
+# Validation Criteria
+
+The restore test passes when:
+
+- backup version exists
+- restore completed successfully
+- restored file exists
+- file contents match
+- file hash matches
+- restore location is accessible
+
+Record:
+
+- restore date
+- restore time
+- backup version used
+- restore target location
+- validation result
+
+---
+
+# Troubleshooting
+
+## Verify Backup Versions
+
+```powershell
+wbadmin get versions
+```
+
+---
+
+## Verify Backup Feature
+
+```powershell
+Get-WindowsFeature Windows-Server-Backup
+```
+
+---
+
+## Verify Backup Services
+
+```powershell
+Get-Service wbengine,VSS
+```
+
+Expected service state:
+
+```text
+Running
+```
+
+---
+
+## Verify Restore Location
+
+```powershell
+Test-Path D:\RestoreTest
+```
+
+Expected result:
+
+```text
+True
+```
+
+---
+
+# Screenshot Capture
+
+![Restore test](/screenshots/restore-test.png)
+
