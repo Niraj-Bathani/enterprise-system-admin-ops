@@ -2,100 +2,267 @@
 
 ## Overview
 
-This repository is a production-style Windows system administration portfolio built from a safe lab environment.
+This repository is a production-style Windows system administration portfolio built in a controlled enterprise lab environment.
 
-It demonstrates real enterprise administration tasks including Active Directory identity management, Group Policy control, DNS and DHCP services, file server permissions, PowerShell automation, incident response, ticket handling, and cross-platform integration.
+It demonstrates practical enterprise administration workflows including:
+
+- Active Directory administration
+- Group Policy management
+- DNS and DHCP services
+- File server configuration and permissions
+- PowerShell automation
+- Incident response and troubleshooting
+- Ticket handling and operational documentation
+- Cross-platform Windows/Linux integration
+
+The project focuses on operational realism, evidence-driven troubleshooting, and enterprise-style documentation standards rather than theoretical walkthroughs.
 
 ---
 
 ## Key Highlights
 
-- Built a fully functional Active Directory lab with domain controller, DNS, DHCP, and client integration
-- Implemented Group Policy for password enforcement, device restrictions, and drive mapping
-- Configured file server with NTFS and share permission models for department-based access
-- Developed PowerShell automation for user lifecycle management and system reporting
-- Documented real incident scenarios with root cause analysis and resolution steps
-- Simulated service desk workflows with ticket templates and escalation processes
+- Built and managed a Windows Server 2022 Active Directory environment
+- Configured DNS and DHCP infrastructure services
+- Implemented Group Policy for password enforcement, device restrictions, and mapped drives
+- Configured NTFS and SMB share permissions using security-group-based access control
+- Developed PowerShell automation for reporting, user management, and operational tasks
+- Documented enterprise-style incidents with diagnosis, remediation, root cause analysis, and prevention guidance
+- Simulated IT operations workflows with ticketing procedures and escalation processes
+- Performed client-side validation from standard-user workstations
 
 ---
 
 ## Lab Environment
 
-| Role | Purpose | Operating System | Hostname | IP Address | Network |
-|------|---------|------------------|----------|------------|---------|
-| Domain Controller | Identity, DNS, DHCP | Windows Server 2022 | DC01 | 192.168.100.10 | Host-only + NAT |
-| Client Workstation | User validation and testing | Windows 10/11 | CLIENT01 | 192.168.100.20 | Host-only + NAT |
-| Linux Server | Cross-platform services (SSH, Samba) | Ubuntu Server 22.04 | UBUNTU01 | 192.168.100.30 | Host-only + NAT |
+| Role | Purpose | Operating System | Hostname | IP Address |
+|---|---|---|---|---|
+| Domain Controller | Active Directory, DNS, DHCP | Windows Server 2022 | DC01 | 192.168.100.10 |
+| Client Workstation | User validation and testing | Windows 10/11 | CLIENT01 | 192.168.100.20 |
+| File Server | SMB shares and NTFS permissions | Windows Server 2022 | FS01 | 192.168.100.30 |
+| Linux Server | SSH and Samba integration | Ubuntu Server 22.04 | UBUNTU01 | 192.168.100.40 |
 
-All virtual machines operate on a host-only network for internal communication and NAT for internet access.  
-`DC01` provides Active Directory, DNS, and DHCP services.  
-`CLIENT01` validates user experience, domain authentication, policy enforcement, and access control.  
-`UBUNTU01` enables Linux integration through SSH and Samba.
+### Environment Details
+
+- Domain: `lab.local`
+- Network Range: `192.168.100.0/24`
+- Network Type: Host-only + NAT
+- Administrative Validation:
+  - RSAT
+  - PowerShell
+  - Event Viewer
+  - Group Policy Management
+  - DNS Manager
+  - Active Directory Users and Computers
+
+All systems operate in an isolated lab environment designed to simulate enterprise administration and operational troubleshooting workflows safely.
+
+---
+
+## Repository Structure
+
+```text
+manual-configurations/
+├── active-directory/
+├── group-policy/
+├── dns-dhcp/
+└── file-server/
+
+automation/
+├── powershell/
+├── reports/
+├── health-checks/
+└── scheduled-tasks/
+
+incidents/
+├── incident-01-login-failure/
+├── incident-02-gpo-not-applying/
+├── incident-03-file-share-access-denied/
+└── incident-04-dns-resolution-failure/
+
+ticketing-system/
+screenshots/
+docs/
+cross-platform/
+```
 
 ---
 
 ## Skills Matrix
 
-| Skill | Repository Evidence |
-|------|---------------------|
-| Active Directory | Domain controller setup, OU structure, user/group management, account recovery, user lifecycle |
-| Group Policy | Password policies, device restrictions, mapped drives, policy troubleshooting |
-| DNS | Role installation, forward lookup zones, A records, resolution troubleshooting |
-| DHCP | Scope configuration, reservations, lease validation, client troubleshooting |
-| File Server | Shared folders, NTFS vs share permissions, department-based access model |
-| PowerShell | Automated user lifecycle, disk usage reporting, system health checks, scheduled scripts |
-| Incident Response | Documented incidents with diagnosis, root cause, fix, and prevention |
-| Ticketing | ITIL-style ticket templates, sample tickets, escalation workflow |
-| Cross-platform | Samba file sharing, SSH access, Linux-Windows integration |
+| Area | Repository Evidence |
+|---|---|
+| Active Directory | OU design, user lifecycle management, group administration, account recovery |
+| Group Policy | Password policies, mapped drives, USB restrictions, policy troubleshooting |
+| DNS | Forward lookup zones, A records, DNS troubleshooting, client resolution validation |
+| DHCP | Scope configuration, reservations, lease validation |
+| File Server | NTFS permissions, SMB share permissions, department-based access models |
+| PowerShell | User automation, reporting, health checks, operational scripting |
+| Incident Response | Diagnosis, remediation, root cause analysis, prevention documentation |
+| Ticketing | ITIL-style ticket workflows and escalation procedures |
+| Cross-platform Integration | Samba, SSH, Linux-Windows interoperability |
+
+---
+
+## Operational Methodology
+
+This repository follows enterprise operational practices including:
+
+- Least privilege administration
+- Evidence-first troubleshooting
+- Root cause analysis
+- Controlled remediation workflows
+- Standard-user validation
+- Operational documentation standards
+- Change verification procedures
+- Rollback awareness and validation
+
+All incident documentation follows a repeatable operational structure:
+
+1. Issue Report
+2. Diagnosis
+3. Root Cause Analysis
+4. Fix / Remediation
+5. Lessons Learned
+6. Prevention
+
+---
+
+## Technologies
+
+### Microsoft Infrastructure
+
+- Windows Server 2022
+- Active Directory Domain Services
+- Group Policy
+- DNS
+- DHCP
+- SMB File Services
+- NTFS Permissions
+- RSAT
+- Event Viewer
+
+### Automation & Administration
+
+- PowerShell
+- PowerShell Remoting
+- Scheduled Tasks
+- Windows Administrative Tools
+
+### Cross-platform
+
+- Ubuntu Server 22.04
+- Samba
+- OpenSSH
+
+### Virtualization
+
+- VMware / VirtualBox
+- Host-only Networking
+- NAT Networking
 
 ---
 
 ## Navigation
 
 ### Core Infrastructure
+
 - [Active Directory](manual-configurations/active-directory/README.md)
 - [Group Policy](manual-configurations/group-policy/README.md)
 - [DNS & DHCP](manual-configurations/dns-dhcp/README.md)
 - [File Server](manual-configurations/file-server/README.md)
 
 ### Operations & Automation
+
 - [PowerShell Scripts](automation/powershell/README.md)
 - [Reports](automation/reports/README.md)
 - [Health Checks](automation/health-checks/README.md)
 - [Scheduled Tasks](automation/scheduled-tasks/README.md)
 
 ### Support & Troubleshooting
+
 - [Incidents](incidents/incident-01-login-failure/issue.md)
 - [Ticketing System](ticketing-system/README.md)
 
 ### Additional Components
+
 - [Cross-platform Integration](cross-platform/README.md)
 - [Documentation](docs/windows-admin-cheatsheet.md)
 
 ---
 
-## How To Use This Repository
+## Proof Of Work
 
-Follow the implementation order defined in the navigation, starting with Active Directory and progressing through Group Policy, DNS/DHCP, file services, and automation. Each section builds on previous components to simulate a real enterprise environment.
+All configurations, scripts, troubleshooting procedures, and incident workflows in this repository were implemented and tested in a live lab environment.
 
-Run all scripts within the lab environment before modifying them. Capture screenshots and command outputs during execution, as this repository emphasizes proof of implementation rather than theoretical documentation.
+Evidence includes:
 
-PowerShell examples assume an elevated session with appropriate administrative privileges. No credentials are stored in scripts. Replace lab-specific values (domain names, IPs, usernames) as needed for your own environment.
+- Real PowerShell execution output
+- Active Directory administrative validation
+- Group Policy testing
+- DNS and DHCP validation
+- File permission testing
+- Event Viewer investigations
+- Incident response documentation
+- Client-side verification from standard-user workstations
+
+All screenshots included in this repository were captured during live lab execution and validation.
 
 ---
 
-## Proof of Work
+## How To Use This Repository
 
-All configurations, scripts, and troubleshooting scenarios in this repository were implemented and tested in a local virtual lab environment. Screenshots and outputs represent real execution, not simulated examples.
+Follow the implementation order defined in the navigation section, beginning with:
+
+1. Active Directory
+2. DNS and DHCP
+3. Group Policy
+4. File Services
+5. Automation
+6. Incident Response
+
+Each section builds on previous infrastructure components to simulate enterprise operational dependencies.
+
+PowerShell examples assume:
+- Elevated administrative privileges
+- Domain connectivity
+- Windows Server administrative tools installed
+
+Replace lab-specific values as needed for your own environment.
 
 ---
 
 ## Scope
 
-This repository focuses on core system administration tasks within a controlled lab environment. It does not include cloud infrastructure, container orchestration, or large-scale enterprise monitoring systems.
+This repository focuses on core enterprise Windows administration and operational troubleshooting within a controlled lab environment.
+
+Included areas:
+
+- Identity management
+- Infrastructure services
+- File services
+- Policy management
+- Automation
+- Operational troubleshooting
+- Incident response documentation
+
+Excluded areas:
+
+- Cloud infrastructure
+- Container orchestration
+- Enterprise SIEM deployment
+- Production-scale monitoring platforms
 
 ---
 
 ## Notes
 
-In production environments, all changes would be performed under change management, peer review, monitoring, and rollback procedures. This lab is designed to safely replicate real-world administrative workflows and troubleshooting scenarios.
+In production environments, all administrative changes would be performed under:
+
+- Change management
+- Peer review
+- Monitoring and alerting
+- Maintenance windows
+- Rollback procedures
+- Operational validation requirements
+
+This lab environment is designed to safely replicate real-world enterprise administration and troubleshooting workflows.
