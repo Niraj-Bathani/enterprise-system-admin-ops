@@ -1,40 +1,284 @@
 # Incident 04 DNS Resolution Failure - Diagnosis
 
-## Diagnostic Goal
+## Objective
 
-The goal was to prove the failing layer before applying a fix. For this incident, the suspected area was DNS record existence, client resolver configuration, and cache state. A disciplined diagnosis prevents temporary workarounds from hiding the actual cause. The technician worked from the client outward: user input, workstation state, DNS, domain controller reachability, account state, policy, then service logs.
+---
 
-## Step-By-Step Checks
+This procedure documents the diagnostic workflow used to investigate DNS resolution failures within the `lab.local` Windows Server 2022 environment.
 
-1. Confirm the user, computer, and time of failure in the ticket.
-2. On `CLIENT01`, run `ipconfig /all` and confirm DNS points to `192.168.100.10`.
-3. Run `nltest /dsgetdc:lab.local` to confirm the client can locate a domain controller.
-4. Run the incident-specific command: `Resolve-DnsName fs01.lab.local -Server 192.168.100.10`.
-5. Open Event Viewer on `DC01` and filter Security logs for the relevant event IDs: DNS Server 4013, 4004, client DNS cache events when enabled.
-6. Compare the event timestamp with the user report and identify the source workstation or service.
-7. Document every result before changing account, policy, DNS, or permission state.
+The investigation focuses on validating:
 
-## Expected Findings
+- DNS server configuration
+- Client resolver functionality
+- DNS record existence
+- Cache state
+- Domain controller communication
+- DNS-related event logging
 
-The investigation should produce a concrete object and a concrete cause: a locked account, a denied group, a bad DNS record, a failed GPO scope, or a stale credential source. If the event logs show no matching activity, widen the time window and confirm the client is authenticating against `DC01` rather than a cached session. If commands return access denied, rerun them from an elevated administrative shell using a domain admin lab account.
+The goal is to identify the failing layer before remediation changes are applied.
 
-## Useful Commands
+---
+
+# Why It Matters
+
+---
+
+DNS failures can interrupt authentication, file access, Group Policy processing, and application connectivity across the environment.
+
+A structured diagnostic process helps:
+
+- Prevent unnecessary configuration changes
+- Preserve troubleshooting evidence
+- Reduce service downtime
+- Improve root cause identification
+- Support operational auditing
+
+Accurate DNS troubleshooting requires validation of both client and server-side components.
+
+---
+
+# Prerequisites
+
+---
+
+Before beginning diagnostics, confirm:
+
+- Administrative access is available
+- PowerShell is launched as Administrator
+- Event Viewer access is available on `DC01`
+- DNS services are operational
+- The incident ticket contains:
+  - Username
+  - Source workstation
+  - Failure timestamp
+  - Reported error message
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the incident ticket and confirm:
+   - Username
+   - Computer name
+   - Failure time
+   - DNS-related symptoms
+
+2. On `CLIENT01`, open Command Prompt and verify DNS configuration:
 
 ```powershell
-Get-ADUser -Identity jsmith -Properties Enabled,LockedOut,PasswordExpired,LastLogonDate
-Search-ADAccount -LockedOut
-gpresult /r
+ipconfig /all
+```
+
+3. Confirm the configured DNS server is:
+
+```text
+192.168.100.10
+```
+
+4. Validate domain controller discovery:
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+5. Test DNS resolution against the domain controller:
+
+```powershell
+Resolve-DnsName fs01.lab.local -Server 192.168.100.10
+```
+
+6. On `DC01`, open Event Viewer and review:
+   - DNS Server logs
+   - Security logs
+   - DNS-related warning or failure events
+
+7. Review relevant event IDs:
+
+| Event ID | Description |
+|---|---|
+| 4013 | DNS server waiting for Active Directory |
+| 4004 | DNS server startup issue |
+| Client DNS cache events | Resolver-related failures |
+
+8. Compare timestamps with the reported incident.
+
+9. Document all findings before making DNS or policy changes.
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate DNS Configuration
+
+```powershell
+ipconfig /all
+```
+
+---
+
+## Validate Domain Controller Discovery
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+---
+
+## Validate Secure Channel
+
+```powershell
 nltest /sc_verify:lab.local
 ```
 
-The output from these commands should be pasted into the ticket summary or saved as a transcript. Avoid relying on memory during incident response; the final post-incident review depends on exact evidence.
+---
 
-## Operational Quality Notes
+## Test DNS Resolution
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+```powershell
+Resolve-DnsName fs01.lab.local -Server 192.168.100.10
+```
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-04-dns-resolution-failure-diagnosis-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+---
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+## Validate User Account Status
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+```powershell
+Get-ADUser -Identity jsmith -Properties Enabled,LockedOut,PasswordExpired,LastLogonDate
+```
+
+---
+
+## Review Locked Accounts
+
+```powershell
+Search-ADAccount -LockedOut
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+# Verification
+
+---
+
+The investigation should identify a confirmed cause such as:
+
+- Missing DNS record
+- Incorrect DNS server configuration
+- DNS cache issue
+- Secure channel failure
+- Group Policy processing issue
+- Domain controller communication issue
+
+Validation checklist:
+
+| Validation Item | Expected Result |
+|---|---|
+| DNS Resolution | Successful |
+| Domain Controller Discovery | Successful |
+| Secure Channel | Verified |
+| DNS Record Presence | Confirmed |
+| Event Logs | Matching timestamps identified |
+
+After remediation:
+
+- Re-test DNS resolution from `CLIENT01`
+- Validate access using a standard domain user account
+- Confirm the issue no longer reproduces
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| DNS lookup failure | Missing DNS record | Create or correct DNS record |
+| Incorrect DNS server | Client misconfiguration | Configure DNS to `192.168.100.10` |
+| Delayed name resolution | Stale DNS cache | Flush DNS cache |
+| `nltest` failure | Domain communication issue | Validate DNS and network connectivity |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` Windows Server 2022 enterprise lab environment.
+
+Operational best practices:
+
+- Record exact commands and timestamps
+- Preserve evidence before remediation
+- Validate from standard user workstations
+- Confirm DNS replication where applicable
+- Avoid temporary workarounds before identifying root cause
+
+Capture evidence at three stages:
+
+| Stage | Example Evidence |
+|---|---|
+| Initial State | DNS failure screenshot |
+| Configuration Change | DNS console or PowerShell evidence |
+| Final Verification | Successful resolution output |
+
+Recommended evidence sources:
+
+- Event Viewer
+- PowerShell transcripts
+- DNS Manager
+- gpresult reports
+- Command Prompt output
+
+Reference:
+
+```text
+../../ticketing-system/README.md
+```
+
+Do not close the incident until:
+
+- Standard-user validation succeeds
+- DNS replication completes
+- Evidence is archived
+- Rollback verification is complete
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| DNS resolution investigation and validation | `incident-04-dns-resolution-failure-diagnosis-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 04 DNS Resolution Failure Diagnosis](../screenshots/incident-04-dns-resolution-failure-diagnosis-verification.png)
