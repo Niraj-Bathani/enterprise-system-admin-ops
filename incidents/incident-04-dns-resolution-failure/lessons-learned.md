@@ -1,27 +1,226 @@
 # Incident 04 DNS Resolution Failure - Lessons Learned
 
-## What Went Well
+## Objective
 
-The incident was handled effectively because the team followed a repeatable diagnostic path and recorded evidence before applying changes. The technician did not assume the first visible symptom was the root cause. Communication stayed clear: the requester received updates, the ticket captured the actions, and the validation was performed from the affected user's point of view.
+---
 
-## What Can Improve
+This document records the operational lessons learned after resolving the DNS resolution failure within the `lab.local` Windows Server 2022 environment.
 
-The main improvement is earlier detection. DNS changes need verification from the same resolver path clients use, not only from the server console. A small monitoring rule or scheduled report would have shortened the time between the first failed event and the support response. The team should also improve knowledge base linking so that common fixes are not rediscovered by each shift.
+The purpose of this review is to improve future incident response efficiency, DNS validation processes, operational documentation, and monitoring practices.
 
-## Runbook Updates
+---
 
-Update the relevant operational guide and link it from the ticket. If the incident involved identity, reference [Active Directory procedures](../../manual-configurations/active-directory/README.md). If it involved policy, reference [Group Policy procedures](../../manual-configurations/group-policy/README.md). If it involved access, reference [File Server procedures](../../manual-configurations/file-server/README.md). If it involved name resolution, reference [DNS and DHCP procedures](../../manual-configurations/dns-dhcp/README.md).
+# Why It Matters
 
-## Follow-Up Actions
+---
 
-Create a follow-up task for prevention, assign an owner, set a due date, and review completion at the next operations meeting. A lesson learned is only valuable if it changes behavior. In the lab, repeat the incident after remediation to confirm the detection and documentation are useful to another technician who did not work the original ticket.
+A completed incident should improve operational processes and reduce the likelihood of recurrence.
 
-## Operational Quality Notes
+Lessons learned reviews help:
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+- Improve troubleshooting consistency
+- Reduce repeated DNS incidents
+- Strengthen operational documentation
+- Improve monitoring and detection
+- Standardize remediation procedures
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-04-dns-resolution-failure-lessons-learned-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+Operational maturity depends on documenting both successful actions and areas requiring improvement.
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+---
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+# Prerequisites
+
+---
+
+Before completing the lessons learned review, confirm:
+
+- The incident is fully resolved
+- Validation testing succeeded
+- Evidence has been archived
+- DNS resolution is operational
+- Final remediation steps are documented
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the completed incident ticket.
+
+2. Confirm:
+   - Root cause
+   - DNS remediation steps
+   - Validation results
+   - Evidence collection
+
+3. Verify screenshots and PowerShell transcripts are stored in the correct evidence location.
+
+4. Review and update:
+   - DNS operational documentation
+   - Troubleshooting runbooks
+   - Knowledge base articles
+
+5. Confirm related documentation references are included:
+   - Active Directory procedures
+   - Group Policy procedures
+   - File Server procedures
+   - DNS and DHCP procedures
+
+6. Create follow-up tasks for:
+   - DNS monitoring improvements
+   - Documentation updates
+   - Validation workflow improvements
+   - Knowledge base maintenance
+
+7. Review the incident during the next operations meeting.
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate DNS Resolution
+
+```powershell
+Resolve-DnsName fs01.lab.local
+```
+
+---
+
+## Review DNS Client Configuration
+
+```powershell
+ipconfig /all
+```
+
+---
+
+## Validate Domain Controller Discovery
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+## Review DNS Server Events
+
+```powershell
+Get-EventLog -LogName DNS Server -Newest 20
+```
+
+---
+
+# Verification
+
+---
+
+The lessons learned review should confirm:
+
+- Root cause was identified correctly
+- DNS remediation restored service
+- Operational documentation was updated
+- Follow-up actions were assigned
+- Monitoring improvements were identified
+
+Validation checklist:
+
+| Validation Item | Expected Result |
+|---|---|
+| Incident Resolution | Completed |
+| DNS Resolution | Successful |
+| Documentation Update | Completed |
+| Follow-Up Actions | Assigned |
+| Standard User Validation | Successful |
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Delayed DNS detection | Limited monitoring | Improve alerting and reporting |
+| Inconsistent DNS validation | Server-only testing | Validate from client systems |
+| Repeated DNS incidents | Missing documentation | Update runbooks and KB articles |
+| Stale client resolution | Cached DNS entries | Flush DNS cache regularly |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` Windows Server 2022 enterprise lab environment.
+
+Operational best practices include:
+
+- Recording evidence before remediation
+- Testing DNS resolution from client systems
+- Maintaining current operational documentation
+- Using repeatable troubleshooting workflows
+- Reviewing monitoring rules regularly
+
+Reference the following operational documentation where applicable:
+
+```text
+../../manual-configurations/active-directory/README.md
+../../manual-configurations/group-policy/README.md
+../../manual-configurations/file-server/README.md
+../../manual-configurations/dns-dhcp/README.md
+../../ticketing-system/README.md
+```
+
+Capture evidence at the following stages:
+
+| Stage | Example Evidence |
+|---|---|
+| Initial State | Failed DNS resolution |
+| Configuration Change | DNS record creation |
+| Final Verification | Successful client resolution |
+
+Do not close the incident until:
+
+- Standard-user validation succeeds
+- Evidence is archived
+- Documentation updates are completed
+- Follow-up actions are assigned
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| DNS lessons learned review and operational validation | `incident-04-dns-resolution-failure-lessons-learned-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 04 DNS Resolution Failure Lessons Learned](../screenshots/incident-04-dns-resolution-failure-lessons-learned-verification.png)
