@@ -1,27 +1,231 @@
 # Incident 04 DNS Resolution Failure - Prevention
 
-## Preventive Controls
+## Objective
 
-To reduce recurrence, implement controls that detect the same failure earlier and make the affected configuration easier to audit. For this incident, the recommended prevention is a DNS change checklist requiring zone verification and client-side `Resolve-DnsName` evidence. The control should be scheduled, owned, and reviewed; otherwise it becomes another undocumented script that future administrators hesitate to trust.
+---
 
-## Monitoring
+This document defines preventive controls and operational practices designed to reduce recurrence of DNS resolution failures within the `lab.local` Windows Server 2022 environment.
 
-Create a scheduled task or monitoring rule that watches the relevant Windows event IDs: DNS Server 4013, 4004, client DNS cache events when enabled. For account lockouts, watch Security event `4740`. For GPO failures, collect client-side GroupPolicy operational events. For file server access problems, enable object access auditing only for the folders where the business value justifies the log volume. For DNS, monitor service health, zone replication, and failed lookup trends.
+The prevention strategy focuses on:
 
-## Documentation And Training
+- DNS validation procedures
+- Monitoring and alerting
+- Documentation improvement
+- Operational auditing
+- Change verification consistency
 
-Add a knowledge base article that describes the symptom, first checks, escalation point, and recovery command. Service desk staff should know which details to collect before escalating: username, computer, timestamp, exact error, and whether the issue follows the user. End users should receive short guidance only when it helps, such as how to update saved credentials after a password change.
+---
 
-## Control Review
+# Why It Matters
 
-Review the preventive control monthly. Confirm the script still runs, logs are still written, alerts reach the correct group, and the owner is current. If the organization adds a second domain controller, changes OU design, deploys endpoint management, or migrates to cloud identity, update the prevention guidance so it does not drift from reality.
+---
 
-## Operational Quality Notes
+DNS failures can impact authentication, file access, application connectivity, and Group Policy processing across the enterprise environment.
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+Preventive controls help:
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-04-dns-resolution-failure-prevention-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+- Detect issues earlier
+- Reduce operational downtime
+- Improve troubleshooting efficiency
+- Strengthen change management
+- Improve DNS auditing visibility
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+Preventive measures are only effective when they are documented, monitored, reviewed, and operationally owned.
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+---
+
+# Prerequisites
+
+---
+
+Before implementing preventive controls, confirm:
+
+- DNS logging is enabled
+- Monitoring systems are operational
+- DNS Manager access is available
+- Administrative ownership is assigned
+- Documentation repositories are updated
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review DNS zone configuration on `DC01`.
+
+2. Confirm DNS changes follow a documented approval process.
+
+3. Verify DNS changes include:
+   - Zone verification
+   - Client-side resolution testing
+   - Evidence collection
+
+4. In Event Viewer, review monitoring coverage for:
+   - DNS Server event `4013`
+   - DNS Server event `4004`
+   - Client DNS cache events
+   - GroupPolicy operational events
+
+5. Confirm scheduled monitoring tasks are operational.
+
+6. Review DNS Manager for:
+   - Stale records
+   - Duplicate records
+   - Missing A records
+   - Replication status
+
+7. Update operational documentation and knowledge base articles.
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate DNS Resolution
+
+```powershell
+Resolve-DnsName fs01.lab.local
+```
+
+---
+
+## Review DNS Client Configuration
+
+```powershell
+ipconfig /all
+```
+
+---
+
+## Validate Domain Controller Discovery
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+---
+
+## Review DNS Server Events
+
+```powershell
+Get-EventLog -LogName "DNS Server" -Newest 20
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+# Verification
+
+---
+
+Preventive controls should confirm:
+
+- DNS monitoring is operational
+- DNS logging functions correctly
+- Client-side validation succeeds
+- Documentation is updated
+- Review ownership is assigned
+
+Validation checklist:
+
+| Validation Item | Expected Result |
+|---|---|
+| DNS Monitoring | Operational |
+| Event Logging | Enabled |
+| Client DNS Validation | Successful |
+| Documentation Updates | Completed |
+| Preventive Review Schedule | Assigned |
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Missing DNS records | Incomplete DNS changes | Require validation checklist |
+| Delayed DNS detection | No monitoring | Implement DNS alerting |
+| Stale client resolution | Cached DNS entries | Flush DNS cache |
+| Incorrect DNS verification | Server-only testing | Validate from client systems |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` Windows Server 2022 enterprise lab environment.
+
+Operational best practices include:
+
+- Validating DNS changes from client systems
+- Recording evidence before remediation
+- Maintaining updated runbooks
+- Reviewing monitoring regularly
+- Using repeatable DNS troubleshooting workflows
+
+Recommended monitoring includes:
+
+| Monitoring Area | Recommended Event |
+|---|---|
+| DNS Server Health | DNS Server `4013` |
+| DNS Startup Issues | DNS Server `4004` |
+| Account Lockouts | Security `4740` |
+| Group Policy Failures | GroupPolicy Operational Log |
+
+Reference documentation:
+
+```text
+../../manual-configurations/active-directory/README.md
+../../manual-configurations/group-policy/README.md
+../../manual-configurations/file-server/README.md
+../../manual-configurations/dns-dhcp/README.md
+../../ticketing-system/README.md
+```
+
+Review preventive controls monthly to confirm:
+
+- Scripts still execute successfully
+- Logs are retained properly
+- Alerts reach the correct operational team
+- Documentation reflects the current environment
+
+Do not rely on undocumented scripts or unverified monitoring rules in production environments.
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| DNS preventive controls and monitoring validation | `incident-04-dns-resolution-failure-prevention-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 04 DNS Resolution Failure Prevention](../screenshots/incident-04-dns-resolution-failure-prevention-verification.png)
