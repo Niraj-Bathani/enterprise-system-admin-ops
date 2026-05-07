@@ -216,4 +216,4 @@ Do not close the incident until:
 ---
 
 
-![Incident 03 File Share Access Denied Issue Report](../../screenshots/incident-03-file-share-access-denied-issue-report-verification.png)
+![Incident 03 File Share Access Denied Issue Report](../screenshots/incident-03-file-share-access-denied-issue-report-verification.png)
