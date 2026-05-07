@@ -38,8 +38,8 @@ The project focuses on operational realism, evidence-driven troubleshooting, and
 |---|---|---|---|---|
 | Domain Controller | Active Directory, DNS, DHCP | Windows Server 2022 | DC01 | 192.168.100.10 |
 | Client Workstation | User validation and testing | Windows 10/11 | CLIENT01 | 192.168.100.20 |
-| File Server | SMB shares and NTFS permissions | Windows Server 2022 | FS01 | 192.168.100.30 |
-| Linux Server | SSH and Samba integration | Ubuntu Server 22.04 | UBUNTU01 | 192.168.100.40 |
+| File Server | SMB shares and NTFS permissions | Windows Server 2022 | FS01 | 192.168.100.40 |
+| Linux Server | SSH and Samba integration | Ubuntu Server 22.04 | UBUNTU01 | 192.168.100.30 |
 
 ### Environment Details
 
