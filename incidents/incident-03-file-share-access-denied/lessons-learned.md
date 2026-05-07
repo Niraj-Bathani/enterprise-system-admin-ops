@@ -1,27 +1,215 @@
 # Incident 03 File Share Access Denied - Lessons Learned
 
-## What Went Well
+## Objective
 
-The incident was handled effectively because the team followed a repeatable diagnostic path and recorded evidence before applying changes. The technician did not assume the first visible symptom was the root cause. Communication stayed clear: the requester received updates, the ticket captured the actions, and the validation was performed from the affected user's point of view.
+---
 
-## What Can Improve
+This document records the operational lessons learned after resolving the Finance file share access issue within the `lab.local` Windows Server 2022 environment.
 
-The main improvement is earlier detection. Access requests should reference the approved group name, not only the department name. A small monitoring rule or scheduled report would have shortened the time between the first failed event and the support response. The team should also improve knowledge base linking so that common fixes are not rediscovered by each shift.
+The purpose of this review is to improve future incident response efficiency, documentation quality, access management practices, and operational consistency.
 
-## Runbook Updates
+---
 
-Update the relevant operational guide and link it from the ticket. If the incident involved identity, reference [Active Directory procedures](../../manual-configurations/active-directory/README.md). If it involved policy, reference [Group Policy procedures](../../manual-configurations/group-policy/README.md). If it involved access, reference [File Server procedures](../../manual-configurations/file-server/README.md). If it involved name resolution, reference [DNS and DHCP procedures](../../manual-configurations/dns-dhcp/README.md).
+# Why It Matters
 
-## Follow-Up Actions
+---
 
-Create a follow-up task for prevention, assign an owner, set a due date, and review completion at the next operations meeting. A lesson learned is only valuable if it changes behavior. In the lab, repeat the incident after remediation to confirm the detection and documentation are useful to another technician who did not work the original ticket.
+A completed incident should improve future operational behavior, not only restore service.
 
-## Operational Quality Notes
+Lessons learned reviews help:
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+- Reduce repeat incidents
+- Improve troubleshooting consistency
+- Strengthen documentation quality
+- Improve escalation efficiency
+- Enhance monitoring and detection
+- Standardize remediation procedures
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-03-file-share-access-denied-lessons-learned-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+Operational maturity depends on documenting both successful actions and areas requiring improvement.
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+---
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+# Prerequisites
+
+---
+
+Before completing the lessons learned review, confirm:
+
+- The incident is fully resolved
+- Validation testing succeeded
+- Evidence has been collected
+- Ticket documentation is complete
+- Final remediation steps are documented
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the completed incident ticket.
+
+2. Confirm:
+   - Root cause
+   - Resolution steps
+   - Validation results
+   - Evidence collection
+
+3. Verify that screenshots and transcripts are stored in the correct evidence location.
+
+4. Review related operational documentation and update affected runbooks if necessary.
+
+5. Confirm the incident references:
+   - Active Directory procedures
+   - Group Policy procedures
+   - File Server procedures
+   - DNS and DHCP procedures
+
+6. Create follow-up tasks for:
+   - Monitoring improvements
+   - Documentation updates
+   - Process improvements
+   - Knowledge base updates
+
+7. Review the incident during the next operations meeting.
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Review User Group Membership
+
+```powershell
+Get-ADUser mlopez -Properties MemberOf
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+## Validate DNS Resolution
+
+```powershell
+Resolve-DnsName lab.local
+```
+
+---
+
+## Review Security Events
+
+```powershell
+Get-EventLog -LogName Security -Newest 20
+```
+
+---
+
+# Verification
+
+---
+
+The lessons learned review should confirm:
+
+- Root cause was properly identified
+- Remediation followed operational standards
+- Evidence collection was completed
+- Documentation was updated
+- Follow-up actions were assigned
+
+Validation checklist:
+
+| Validation Item | Expected Result |
+|---|---|
+| Incident Resolution | Completed |
+| Evidence Collection | Completed |
+| Documentation Update | Completed |
+| Follow-Up Actions | Assigned |
+| Standard User Validation | Successful |
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Repeat access incidents | Missing documentation | Update operational runbooks |
+| Delayed response | Limited monitoring | Improve alerting and reporting |
+| Incorrect permission requests | Group naming confusion | Standardize access request process |
+| Incomplete evidence | Missing capture process | Require evidence checklist |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` Windows Server 2022 enterprise lab environment.
+
+Operational best practices include:
+
+- Recording evidence before remediation
+- Using least-privilege changes
+- Testing from standard user accounts
+- Maintaining repeatable troubleshooting steps
+- Updating runbooks after incidents
+
+Reference the following operational documentation where applicable:
+
+```text
+../../manual-configurations/active-directory/README.md
+../../manual-configurations/group-policy/README.md
+../../manual-configurations/file-server/README.md
+../../manual-configurations/dns-dhcp/README.md
+../../ticketing-system/README.md
+```
+
+Capture evidence at the following stages:
+
+| Stage | Example Evidence |
+|---|---|
+| Initial State | Access denied screenshot |
+| Configuration Change | Group membership update |
+| Final Verification | Successful user validation |
+
+Do not close the incident until:
+
+- Standard-user testing succeeds
+- Evidence is archived
+- Documentation updates are completed
+- Follow-up actions are assigned
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| Incident review and successful operational validation | `incident-03-file-share-access-denied-lessons-learned-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+![Incident 03 File Share Access Denied Lessons Learned](../screenshots/incident-03-file-share-access-denied-lessons-learned-verification.png)
