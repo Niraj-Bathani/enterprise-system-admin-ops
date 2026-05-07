@@ -1,27 +1,219 @@
 # Incident 03 File Share Access Denied - Issue Report
 
-## Incident Summary
+## Objective
 
-On 2026-04-25 11:45, Maria Lopez from Finance reported that a Finance user could browse the share but could not create files. The priority was classified as P2 because the user or service was blocked from normal work but the wider business remained operational. The affected environment was `lab.local`, with primary investigation on `DC01` and client validation from `CLIENT01`. The visible error was: `Access is denied.`.
+---
 
-## Business Impact
+This document records the initial issue report and triage process for a Finance file share access problem within the `lab.local` Windows Server 2022 environment.
 
-The immediate impact was loss of productivity for the affected user group and increased service desk volume. The symptom was simple from the user's perspective, but it touched identity, workstation state, policy refresh, and audit logging. The ticket was opened with enough detail to avoid repeated questions: username, computer name, last successful sign-in time, exact error text, network location, and whether the issue followed the user to another computer.
+The incident focuses on identifying the user impact, collecting initial evidence, and preparing the environment for structured diagnostics and remediation.
 
-## Initial Triage
+---
 
-The service desk confirmed the user was on the corporate network, had not recently changed departments, and was using the expected domain sign-in format. The technician checked whether the problem occurred in a browser, in Windows sign-in, or only when accessing a specific network resource. That distinction matters because a Windows logon failure points toward AD, Kerberos, account state, workstation trust, or password status, while a file-share-only failure points toward group membership or ACLs.
+# Why It Matters
 
-## Evidence To Collect
+---
 
-Record the ticket number, reporter, affected asset, error message, and timestamps. Capture screenshots only after reproducing the failure in the lab. Useful evidence includes Event Viewer entries, ADUC account properties, `gpresult /r`, `ipconfig /all`, `whoami /groups`, or `Resolve-DnsName lab.local`, depending on the symptom. Evidence should be attached to the ticket and referenced in the final resolution notes.
+Accurate issue reporting improves troubleshooting efficiency and reduces repeated investigation steps.
 
-## Operational Quality Notes
+A properly documented incident helps:
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+- Preserve troubleshooting evidence
+- Reduce repeated user questioning
+- Improve escalation quality
+- Speed up root cause identification
+- Support post-incident review
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-03-file-share-access-denied-issue-report-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+Clear initial triage also helps determine whether the issue is related to:
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+- Active Directory
+- Group Policy
+- DNS
+- File permissions
+- Authentication
+- Workstation configuration
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+---
+
+# Prerequisites
+
+---
+
+Before beginning triage, confirm:
+
+- The affected user is available for validation
+- Administrative tools are accessible
+- The issue can be reproduced safely in the lab
+- The incident ticket contains sufficient detail
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the incident ticket and confirm:
+   - Username
+   - Computer name
+   - Error message
+   - Time of failure
+   - Network location
+
+2. Confirm whether the issue:
+   - Occurs only on file shares
+   - Follows the user to another workstation
+   - Impacts additional users
+
+3. On `CLIENT01`, verify the user is connected to the corporate network.
+
+4. Attempt to reproduce the issue by accessing the Finance share.
+
+5. Confirm the visible error message:
+
+```text
+Access is denied.
+```
+
+6. Review the user account in:
+   - Active Directory Users and Computers
+   - Group membership assignments
+   - Account status
+
+7. Collect initial evidence before remediation begins.
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate Network Configuration
+
+```powershell
+ipconfig /all
+```
+
+---
+
+## Validate User Group Membership
+
+```powershell
+whoami /groups
+```
+
+---
+
+## Validate DNS Resolution
+
+```powershell
+Resolve-DnsName lab.local
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+# Verification
+
+---
+
+The initial investigation should confirm:
+
+- The issue is reproducible
+- The user is authenticated to the domain
+- DNS resolution functions correctly
+- The problem is isolated to file share access
+- Evidence has been collected successfully
+
+Validation checklist:
+
+| Validation Item | Expected Result |
+|---|---|
+| Network Connectivity | Successful |
+| DNS Resolution | Successful |
+| Domain Authentication | Successful |
+| File Share Access | Failing as reported |
+| Evidence Collection | Completed |
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Access denied on Finance share | Missing permissions | Validate group membership |
+| User authentication issue | Account lockout | Unlock account |
+| DNS lookup failure | Incorrect DNS server | Point client to `192.168.100.10` |
+| GPO processing issue | Policy failure | Run `gpupdate /force` |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` enterprise lab environment using Windows Server 2022 systems.
+
+During incident triage:
+
+- Record exact timestamps
+- Preserve initial evidence
+- Avoid immediate permission changes
+- Confirm the issue before remediation
+
+Evidence should include:
+
+- Event Viewer logs
+- PowerShell output
+- ADUC screenshots
+- Group Policy results
+- File access error messages
+
+Reference:
+
+```text
+../../ticketing-system/README.md
+```
+
+Do not close the incident until:
+
+- Root cause is identified
+- Standard-user validation succeeds
+- Evidence is attached to the ticket
+- Final remediation is verified
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| Initial access denied investigation | `incident-03-file-share-access-denied-issue-report-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 03 File Share Access Denied Issue Report](../../screenshots/incident-03-file-share-access-denied-issue-report-verification.png)
