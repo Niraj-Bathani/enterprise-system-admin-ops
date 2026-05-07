@@ -1,27 +1,234 @@
 # Incident 04 DNS Resolution Failure - Root Cause
 
-## Root Cause Statement
+## Objective
 
-The root cause was the A record for `fs01` was created in the wrong zone and clients were also holding stale negative cache entries. The immediate symptom was clients could not resolve `fs01.lab.local`, but the durable cause was a mismatch between the expected configuration and the actual state of the account, workstation, policy, or service. The incident was not closed until the team could explain why the symptom appeared at that time and why it affected the specific user or system.
+---
 
-## Contributing Factors
+This document records the confirmed root cause analysis for the DNS resolution failure within the `lab.local` Windows Server 2022 environment.
 
-Several common enterprise factors can make this type of incident harder to diagnose. Cached credentials can continue to submit an old password. Group Policy can be linked to the wrong OU or blocked by security filtering. DNS caches can keep resolving a stale address. File access can be allowed at the share layer but denied at NTFS, or the reverse. A clear root cause separates the final triggering event from these background conditions.
+The purpose of this review is to identify the exact DNS failure condition, document supporting evidence, and separate the confirmed root cause from contributing environmental conditions.
 
-## Proof
+---
 
-The proof came from the diagnostic evidence: DNS Manager showed the record outside `lab.local`, and `Resolve-DnsName` against `192.168.100.10` returned NXDOMAIN until the record was recreated. The event ID, command output, and client-side reproduction were consistent with the same explanation. No fix was considered permanent until the error stopped recurring after a fresh sign-in or a forced policy refresh. In production, this proof would be attached to the ticket with timestamps and administrator initials.
+# Why It Matters
 
-## What Was Ruled Out
+---
 
-The team ruled out broad domain controller outage by verifying `nltest /dsgetdc:lab.local`. Name resolution was checked with `Resolve-DnsName lab.local`. Network connectivity was checked with `Test-NetConnection DC01 -Port 389` for LDAP and, when relevant, `Test-NetConnection FS01 -Port 445` for SMB. The user was tested from a known-good client where appropriate. These exclusions are important because they prevent the incident record from becoming a guess.
+Root cause analysis prevents recurring DNS incidents by identifying the actual configuration failure instead of only correcting the visible symptom.
 
-## Operational Quality Notes
+A complete root cause review helps:
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+- Improve troubleshooting accuracy
+- Reduce repeated DNS incidents
+- Strengthen operational documentation
+- Improve DNS validation workflows
+- Support audit and compliance requirements
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-04-dns-resolution-failure-root-cause-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+The incident is not considered resolved until the technical team can explain:
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+- Why the issue occurred
+- Why it affected the specific systems
+- Why it appeared at that time
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+---
+
+# Prerequisites
+
+---
+
+Before completing root cause analysis, confirm:
+
+- Diagnostic evidence has been collected
+- Validation testing is complete
+- DNS logs are available
+- Client-side reproduction succeeded
+- Remediation actions are documented
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the incident ticket and collected evidence.
+
+2. Confirm the affected systems:
+   - Could not resolve `fs01.lab.local`
+   - Returned DNS lookup failures
+
+3. On `DC01`, review:
+   - DNS Manager
+   - DNS zone structure
+   - Event Viewer DNS logs
+
+4. Confirm the `fs01` A record:
+   - Existed outside the correct `lab.local` zone
+   - Was unavailable to clients using standard resolution paths
+
+5. Validate client-side failures using:
+   - `Resolve-DnsName`
+   - Client DNS cache review
+   - DNS Manager verification
+
+6. Confirm stale negative DNS cache entries existed on affected clients.
+
+7. Validate the issue no longer reproduces after:
+   - Correct DNS record creation
+   - Client DNS cache flush
+   - DNS replication completion
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate DNS Resolution
+
+```powershell
+Resolve-DnsName fs01.lab.local -Server 192.168.100.10
+```
+
+---
+
+## Validate Domain Controller Discovery
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+---
+
+## Validate LDAP Connectivity
+
+```powershell
+Test-NetConnection DC01 -Port 389
+```
+
+---
+
+## Validate SMB Connectivity
+
+```powershell
+Test-NetConnection FS01 -Port 445
+```
+
+---
+
+## Review DNS Client Configuration
+
+```powershell
+ipconfig /all
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+# Verification
+
+---
+
+The confirmed root cause should validate the following findings:
+
+| Validation Item | Result |
+|---|---|
+| DNS Record Placement | Incorrect zone |
+| Client DNS Resolution | Failed |
+| DNS Server Response | NXDOMAIN |
+| Domain Controller Discovery | Successful |
+| LDAP Connectivity | Successful |
+| SMB Connectivity | Successful |
+
+The issue is considered resolved only after:
+
+- DNS records are recreated correctly
+- Client DNS caches are flushed
+- Name resolution succeeds consistently
+- DNS failure events stop recurring
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| NXDOMAIN response | Missing or misplaced DNS record | Recreate record in correct zone |
+| DNS issue persists after fix | Cached negative response | Flush client DNS cache |
+| DNS resolution inconsistent | Replication delay | Wait for DNS replication |
+| Client resolution failure | Incorrect DNS server | Configure client DNS correctly |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` Windows Server 2022 enterprise lab environment.
+
+Operational best practices include:
+
+- Capturing evidence before remediation
+- Verifying DNS records carefully
+- Testing from client systems
+- Separating contributing factors from root cause
+- Recording timestamps and exact commands
+
+The following conditions were ruled out during investigation:
+
+| Validation Area | Verification Method |
+|---|---|
+| Domain Controller Availability | `nltest /dsgetdc:lab.local` |
+| DNS Server Connectivity | `Resolve-DnsName lab.local` |
+| LDAP Connectivity | `Test-NetConnection DC01 -Port 389` |
+| SMB Connectivity | `Test-NetConnection FS01 -Port 445` |
+| Client Workstation Failure | Known-good client validation |
+
+Reference documentation:
+
+```text
+../../ticketing-system/README.md
+```
+
+Do not close the incident until:
+
+- Root cause is fully documented
+- Evidence is archived
+- Standard-user validation succeeds
+- Recurrence testing is complete
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| DNS root cause investigation and validation | `incident-04-dns-resolution-failure-root-cause-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 04 DNS Resolution Failure Root Cause](../screenshots/incident-04-dns-resolution-failure-root-cause-verification.png)
