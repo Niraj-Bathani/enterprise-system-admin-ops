@@ -1,27 +1,239 @@
 # Incident 03 File Share Access Denied - Root Cause
 
-## Root Cause Statement
+## Objective
 
-The root cause was the user was added to the department distribution group but not the file share security group that grants NTFS Modify. The immediate symptom was a Finance user could browse the share but could not create files, but the durable cause was a mismatch between the expected configuration and the actual state of the account, workstation, policy, or service. The incident was not closed until the team could explain why the symptom appeared at that time and why it affected the specific user or system.
+---
 
-## Contributing Factors
+This document records the confirmed root cause analysis for the Finance file share access issue within the `lab.local` Windows Server 2022 environment.
 
-Several common enterprise factors can make this type of incident harder to diagnose. Cached credentials can continue to submit an old password. Group Policy can be linked to the wrong OU or blocked by security filtering. DNS caches can keep resolving a stale address. File access can be allowed at the share layer but denied at NTFS, or the reverse. A clear root cause separates the final triggering event from these background conditions.
+The purpose of this review is to identify the exact failure condition, document supporting evidence, and distinguish the true root cause from contributing environmental conditions.
 
-## Proof
+---
 
-The proof came from the diagnostic evidence: `whoami /groups` did not show `GG_Finance_Share_Modify`, while Effective Access showed read-only access. The event ID, command output, and client-side reproduction were consistent with the same explanation. No fix was considered permanent until the error stopped recurring after a fresh sign-in or a forced policy refresh. In production, this proof would be attached to the ticket with timestamps and administrator initials.
+# Why It Matters
 
-## What Was Ruled Out
+---
 
-The team ruled out broad domain controller outage by verifying `nltest /dsgetdc:lab.local`. Name resolution was checked with `Resolve-DnsName lab.local`. Network connectivity was checked with `Test-NetConnection DC01 -Port 389` for LDAP and, when relevant, `Test-NetConnection FS01 -Port 445` for SMB. The user was tested from a known-good client where appropriate. These exclusions are important because they prevent the incident record from becoming a guess.
+Root cause analysis prevents recurring incidents by identifying the actual configuration failure instead of only correcting the visible symptom.
 
-## Operational Quality Notes
+A complete root cause review helps:
 
-This procedure is written for a controlled lab using `lab.local`, `192.168.100.0/24`, and named servers such as `DC01`, `FS01`, and `CLIENT01`. In production, treat the same workflow as a controlled change. Record the request number, the business owner, the maintenance window, the rollback decision, and the validation owner before making changes. Even when a command is safe, the operational risk comes from scope. A policy linked at the domain root affects far more users than a policy linked to a test OU, and a file permission change inherited by child folders can expose or block many departments at once.
+- Improve troubleshooting accuracy
+- Reduce repeat incidents
+- Improve operational documentation
+- Strengthen access management processes
+- Support audit and compliance requirements
 
-When following this guide, capture evidence at three points: the starting state, the configuration change, and the final verification. Evidence can be a PowerShell transcript, an Event Viewer screenshot, a `gpresult` HTML report, or a console screenshot saved under the matching `screenshots` folder. Keep screenshots named after the action they prove, such as `incident-03-file-share-access-denied-root-cause-verification.png`, so reviewers can connect the image to the step. The screenshot image tags in this document are intentional capture targets; add the actual images after the lab run instead of using mock pictures.
+The incident is not considered resolved until the technical team can explain:
 
-For troubleshooting, work outward from the most local dependency. Confirm the command ran under the expected account, confirm the target computer can resolve `lab.local`, confirm time is synchronized, confirm Windows Firewall is not blocking the management path, and only then escalate to service-level causes. A useful operator habit is to write down the exact command, the exact error text, and the exact time. That makes event log searches much easier and keeps handoffs clean during an incident bridge.
+- Why the issue occurred
+- Why it affected the specific user
+- Why it appeared at that time
 
-After completing the procedure, compare the outcome with [README.md](../../ticketing-system/README.md). If the change touches identity, DNS, DHCP, or file access, wait long enough for replication or client refresh and then test from a normal user workstation instead of only from the server console. A configuration that succeeds for a domain administrator can still fail for a standard employee because of security filtering, missing group membership, user profile state, or cached credentials. Close the work only after a standard-user validation has passed and the rollback path has been confirmed.
+---
+
+# Prerequisites
+
+---
+
+Before completing root cause analysis, confirm:
+
+- Diagnostic evidence has been collected
+- Validation testing is complete
+- Event logs are available
+- User reproduction testing succeeded
+- Remediation actions are documented
+
+Environment references:
+
+| Component | Value |
+|---|---|
+| Domain | `lab.local` |
+| DC01 | `192.168.100.10` |
+| FS01 | `192.168.100.30` |
+| CLIENT01 | `192.168.100.20` |
+
+---
+
+# GUI Procedure
+
+---
+
+1. Review the incident ticket and collected evidence.
+
+2. Confirm the affected user:
+   - Could browse the Finance share
+   - Could not create or modify files
+
+3. On `DC01`, review:
+   - Active Directory group membership
+   - Security group assignments
+   - User account status
+
+4. On `FS01`, review:
+   - Share permissions
+   - NTFS permissions
+   - Effective Access results
+
+5. Confirm the user was added to:
+   - Distribution group only
+   - Not the required security group:
+   
+```text
+GG_Finance_Share_Modify
+```
+
+6. Validate that the issue reproduces consistently before remediation.
+
+7. Confirm the issue no longer reproduces after:
+   - Group membership correction
+   - User sign-out/sign-in
+   - Group Policy refresh
+
+---
+
+# PowerShell Procedure
+
+---
+
+## Validate User Group Membership
+
+```powershell
+whoami /groups
+```
+
+---
+
+## Validate Domain Controller Discovery
+
+```powershell
+nltest /dsgetdc:lab.local
+```
+
+---
+
+## Validate DNS Resolution
+
+```powershell
+Resolve-DnsName lab.local
+```
+
+---
+
+## Validate LDAP Connectivity
+
+```powershell
+Test-NetConnection DC01 -Port 389
+```
+
+---
+
+## Validate SMB Connectivity
+
+```powershell
+Test-NetConnection FS01 -Port 445
+```
+
+---
+
+## Review Applied Group Policies
+
+```powershell
+gpresult /r
+```
+
+---
+
+# Verification
+
+---
+
+The confirmed root cause should validate the following findings:
+
+| Validation Item | Result |
+|---|---|
+| Distribution Group Membership | Present |
+| Security Group Membership | Missing |
+| Effective Access | Read-only |
+| Share Browsing | Successful |
+| File Creation | Failed |
+| DNS Resolution | Successful |
+| Domain Controller Discovery | Successful |
+
+The issue is considered resolved only after:
+
+- Group membership is corrected
+- User authentication token is refreshed
+- File creation succeeds
+- Access denial events stop recurring
+
+---
+
+# Common Issues And Fixes
+
+---
+
+| Issue | Cause | Resolution |
+|---|---|---|
+| Read-only access only | Missing NTFS modify permission | Add user to security group |
+| User appears correctly assigned | Distribution group used instead of security group | Correct group assignment |
+| Intermittent access issues | Cached credentials | Force sign-out and sign-in |
+| Access issue persists after fix | Policy token not refreshed | Run `gpupdate /force` |
+
+---
+
+# Operational Quality Notes
+
+---
+
+This procedure is intended for the `lab.local` Windows Server 2022 enterprise lab environment.
+
+Operational best practices include:
+
+- Capturing evidence before remediation
+- Verifying group membership carefully
+- Separating contributing factors from root cause
+- Testing from standard user accounts
+- Recording timestamps and exact commands
+
+The following conditions were ruled out during investigation:
+
+| Validation Area | Verification Method |
+|---|---|
+| Domain Controller Availability | `nltest /dsgetdc:lab.local` |
+| DNS Resolution | `Resolve-DnsName lab.local` |
+| LDAP Connectivity | `Test-NetConnection DC01 -Port 389` |
+| SMB Connectivity | `Test-NetConnection FS01 -Port 445` |
+| Client Workstation Issue | Known-good client validation |
+
+Reference documentation:
+
+```text
+../../ticketing-system/README.md
+```
+
+Do not close the incident until:
+
+- Root cause is fully documented
+- Evidence is archived
+- Standard-user validation succeeds
+- Recurrence testing is complete
+
+---
+
+# Screenshot Capture
+
+---
+
+| Screenshot Requirement | Suggested Filename |
+|---|---|
+| Root cause validation and access review | `incident-03-file-share-access-denied-root-cause-verification.png` |
+
+---
+
+## Screenshot Reference
+
+---
+
+
+![Incident 03 File Share Access Denied Root Cause](../screenshots/incident-03-file-share-access-denied-root-cause-verification.png)
